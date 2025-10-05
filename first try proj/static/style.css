@@ -1,0 +1,89 @@
+
+/* === Общие стили === */
+body { font-family: sans-serif; margin: 20px; }
+h2 { margin-top: 30px; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+th { background: #eee; }
+tr:hover { background: #f9f9f9; cursor: pointer; }
+#plotArea { margin-top: 20px; }
+.hidden { display: none; }
+#backBtn { margin: 10px 0; }
+
+#batteryTable th:nth-child(1) { width: 50px; }     /* ID */
+#batteryTable th:nth-child(2) { width: 200px; }    /* Name */
+#batteryTable th:nth-child(3) { width: 150px; }    /* Chemistry */
+#batteryTable th:nth-child(4) { width: 120px; }    /* Capacity */
+#batteryTable th:nth-child(5) { width: 160px; }    /* Voltage */
+
+#experimentTable th:nth-child(1) { width: 50px; }     /* ID */
+#experimentTable th:nth-child(2) { width: 200px; }    /* Format */
+#experimentTable th:nth-child(3) { width: 150px; }    /* Date */
+#experimentTable th:nth-child(4) { width: 120px; }    /* Durarion */
+#experimentTable th:nth-child(5) { width: 160px; }    /* notes */
+
+#batteryTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* === Модали === */
+
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0; 
+    background: rgba(0,0,0,0.5);
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000;
+  }
+
+  .modal {
+    background: #fff; 
+    padding: 16px; 
+    border: 1px solid #333; 
+    width: 420px; 
+    max-width: 90%;
+  }
+
+  .modal h3 { 
+    margin-top: 0; 
+}
+
+  .modal .row { 
+    margin-bottom: 8px; 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+}
+
+  .modal label { 
+    min-width: 120px; 
+}
+
+  .modal input[type="text"], 
+  .modal input[type="number"], 
+  .modal input[type="date"], 
+  .modal textarea {
+    flex: 1; 
+    padding: 6px;
+  }
+
+  .modal textarea { 
+    min-height: 80px; 
+}
+
+  .modal .actions { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 8px; 
+    margin-top: 12px; 
+}
+
+  .show { 
+    display: flex !important; 
+
+
+}
