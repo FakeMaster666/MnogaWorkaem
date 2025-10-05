@@ -1,0 +1,199 @@
+
+/* === Общие стили === */
+body { font-family: sans-serif; margin: 20px; }
+h2 { margin-top: 30px; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+th { background: #eee; }
+tr:hover { background: #f9f9f9; cursor: pointer; }
+#plotArea { margin-top: 20px; }
+.hidden { display: none; }
+#backBtn { margin: 10px 0; }
+
+#batteryTable th:nth-child(1) { width: 50px; }     /* ID */
+#batteryTable th:nth-child(2) { width: 200px; }    /* Name */
+#batteryTable th:nth-child(3) { width: 150px; }    /* Chemistry */
+#batteryTable th:nth-child(4) { width: 120px; }    /* Capacity */
+#batteryTable th:nth-child(5) { width: 160px; }    /* Voltage */
+
+#experimentTable th:nth-child(1) { width: 50px; }     /* ID */
+#experimentTable th:nth-child(2) { width: 200px; }    /* Format */
+#experimentTable th:nth-child(3) { width: 150px; }    /* Date */
+#experimentTable th:nth-child(4) { width: 120px; }    /* Durarion */
+#experimentTable th:nth-child(5) { width: 160px; }    /* notes */
+
+#batteryTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* === Модали === */
+
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0; 
+    background: rgba(0,0,0,0.5);
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000;
+  }
+
+  .modal {
+    background: #fff; 
+    padding: 16px; 
+    border: 1px solid #333; 
+    width: 420px; 
+    max-width: 90%;
+  }
+
+  .modal h3 { 
+    margin-top: 0; 
+}
+
+  .modal .row { 
+    margin-bottom: 8px; 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+}
+
+  .modal label { 
+    min-width: 120px; 
+}
+
+  .modal input[type="text"], 
+  .modal input[type="number"], 
+  .modal input[type="date"], 
+  .modal textarea {
+    flex: 1; 
+    padding: 6px;
+  }
+
+  .modal textarea { 
+    min-height: 80px; 
+}
+
+  .modal .actions { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 8px; 
+    margin-top: 12px; 
+}
+
+  .show { 
+    display: flex !important; 
+
+
+}
+
+
+/*    -------------------------------------------------------------------------------------------------------   */
+#batteryTable tr,
+#experimentTable tr {
+  cursor: context-menu;
+}
+
+#batteryTable tr:hover,
+#experimentTable tr:hover {
+  background-color: #f5f5f5;
+}
+
+/* Стили для кнопок в модалях */
+.danger {
+  background-color: #d32f2f;
+  color: white;
+  border: 1px solid #c62828;
+}
+
+.danger:hover {
+  background-color: #b71c1c;
+}
+
+.modal p {
+  margin: 15px 0;
+  line-height: 1.4;
+}
+
+#experimentTable td:first-child {
+  cursor: pointer;
+  color: #1976d2;
+  font-weight: bold;
+  position: relative;
+}
+
+#experimentTable td:first-child:hover {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+#experimentTable td:first-child::after {
+  margin-left: 5px;
+  font-size: 12px;
+}
+/*    ----------------------------------Фильтр----------------------------------------------------------   */
+
+.filter-section {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.filter-section h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.range-inputs input {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.range-inputs span {
+  color: #666;
+}
+
+#filterChemistry {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#filterName {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.filter-btn {
+  background: #2ba4b4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.filter-btn:hover {
+  background: #2ba4b4;
+}
+
+.filter-btn.active {
+  background: #2ba4b4;
+}
+
+
