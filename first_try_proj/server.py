@@ -24,9 +24,10 @@ import pandas as pd
 # Config (ENV)
 # =========================
 DB_HOST = os.getenv("PGHOST", "localhost")
-DB_PORT = int(os.getenv("PGPORT", "8001"))
+DB_PORT = int(os.getenv("PGPORT", "5432"))
 DB_USER = os.getenv("PGUSER", "postgres")
-DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
+DB_PASSWORD = os.getenv("PGPASSWORD", "12345678")
+# DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
 DB_NAME = os.getenv("PGDATABASE", "postgres")
 
 # Ограничения/настройки
@@ -222,51 +223,6 @@ def api_batteries(
     finally:
         if conn:
             put_conn(conn)
-
-
-
-# @app.post("/api/batteries_old")
-# def api_create_battery(payload: Dict):
-#     """
-#     Создаёт батарею и возвращает её id.
-#     Ожидает JSON: { name, chemistry, capacity?, voltage?, notes? }
-#     """
-#     name = (payload.get("name") or "").strip()
-#     chemistry = (payload.get("chemistry") or "").strip()
-#     capacity = payload.get("capacity")
-#     voltage = payload.get("voltage")
-#     notes = payload.get("notes")
-#
-#     if not name or not chemistry:
-#         raise HTTPException(400, "Fields 'name' and 'chemistry' are required")
-#
-#     sql = """
-#         INSERT INTO batteries(name, chemistry, capacity, voltage, notes)
-#         VALUES (%s, %s, %s, %s, %s)
-#         RETURNING id, name, chemistry, capacity, voltage, notes
-#     """
-#
-#     conn = None
-#     try:
-#         conn = get_conn()
-#         with conn.cursor() as cur:
-#             cur.execute(sql, (name, chemistry, capacity, voltage, notes))
-#             row = cur.fetchone()
-#         conn.commit()
-#         return {
-#             "id": row["id"],
-#             "name": row["name"],
-#             "chemistry": row["chemistry"],
-#             "capacity": float(row["capacity"]) if row["capacity"] is not None else None,
-#             "voltage": float(row["voltage"]) if row["voltage"] is not None else None,
-#             "notes": row["notes"],
-#         }
-#     except Exception as e:
-#         if conn: conn.rollback()
-#         raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
-#     finally:
-#         if conn: put_conn(conn)
-
 
 @app.post("/api/batteries")
 def api_create_battery(payload: Dict):
@@ -559,52 +515,60 @@ async def upload_file(
 
 
 
-# Удаление элемента таблицы батарей
-@app.delete("/api/batteries/{battery_id}")
-def api_delete_battery(battery_id: int):
-    """
-    Удаляет батарею и все связанные эксперименты.
-    """
-    conn = None
-    try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            # Сначала удаляем эксперименты
-            cur.execute("DELETE FROM experiments WHERE battery = %s", (battery_id,))
-            # Затем удаляем батарею
-            cur.execute("DELETE FROM batteries WHERE id = %s", (battery_id,))
-        conn.commit()
-        return {"message": f"Battery {battery_id} and its experiments deleted"}
-    except Exception as e:
-        if conn: 
-            conn.rollback()
-        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
-    finally:
-        if conn: 
-            put_conn(conn)
+# # Удаление элемента таблицы батарей
+# @app.delete("/api/batteries/{battery_id}")
+# def api_delete_battery(battery_id: int):
+#     """
+#     Удаляет батарею и все связанные эксперименты.
+#     """
+#     conn = None
+#     try:
+#         conn = get_conn()
+#         with conn.cursor() as cur:
+#             # Сначала удаляем эксперименты
+#             cur.execute("DELETE FROM experiments WHERE battery = %s", (battery_id,))
+#             # Затем удаляем батарею
+#             cur.execute("DELETE FROM batteries WHERE id = %s", (battery_id,))
+#         conn.commit()
+#         return {"message": f"Battery {battery_id} and its experiments deleted"}
+#     except Exception as e:
+#         if conn: 
+#             conn.rollback()
+#         raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+#     finally:
+#         if conn: 
+#             put_conn(conn)
 
 
 
-# Удаление элемента таблицы экспериментов 
-@app.delete("/api/experiments/{experiment_id}")
-def api_delete_experiment(experiment_id: int):
-    """
-    Удаляет эксперимент.
-    """
-    conn = None
-    try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM experiments WHERE id = %s", (experiment_id,))
-        conn.commit()
-        return {"message": f"Experiment {experiment_id} deleted"}
-    except Exception as e:
-        if conn: 
-            conn.rollback()
-        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
-    finally:
-        if conn: 
-            put_conn(conn)
+# # Удаление элемента таблицы экспериментов 
+# @app.delete("/api/experiments/{experiment_id}")
+# def api_delete_experiment(experiment_id: int):
+
+
+
+
+
+
+
+
+#     """
+#     Удаляет эксперимент.
+#     """
+#     conn = None
+#     try:
+#         conn = get_conn()
+#         with conn.cursor() as cur:
+#             cur.execute("DELETE FROM experiments WHERE id = %s", (experiment_id,))
+#         conn.commit()
+#         return {"message": f"Experiment {experiment_id} deleted"}
+#     except Exception as e:
+#         if conn: 
+#             conn.rollback()
+#         raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+#     finally:
+#         if conn: 
+#             put_conn(conn)
 
 ############################ Фильтр##################################
 
@@ -702,10 +666,213 @@ def api_unique_chemistries() -> List[str]:
             put_conn(conn)
 
 ###########################################
+# Обновление батареи
+@app.put("/api/batteries/{battery_id}")
+def api_update_battery(battery_id: int, payload: Dict):
+    """
+    Обновляет данные батареи.
+    """
+    conn = None
+    try:
+        conn = get_conn()
+        
+        # Собираем SET части запроса динамически
+        set_parts = []
+        params = []
+        
+        if "name" in payload:
+            set_parts.append("name = %s")
+            params.append(payload["name"])
+            
+        if "chemistry" in payload:
+            set_parts.append("chemistry = %s")
+            params.append(payload["chemistry"])
+            
+        if "capacity" in payload:
+            set_parts.append("capacity = %s")
+            params.append(payload["capacity"])
+            
+        if "voltage" in payload:
+            voltage = payload["voltage"]
+            if voltage != [None, None]:
+                if not isinstance(voltage, list) or len(voltage) != 2:
+                    raise HTTPException(400, "voltage must be an array [min, max]")
+                
+                try:
+                    vmin = float(voltage[0]) if voltage[0] is not None else None
+                    vmax = float(voltage[1]) if voltage[1] is not None else None
+                except Exception:
+                    raise HTTPException(400, "voltage items must be numeric")
+                
+                if vmin is not None and vmax is not None and vmin > vmax:
+                    raise HTTPException(400, "voltage[0] must be ≤ voltage[1]")
+                
+                set_parts.append("voltage = %s")
+                params.append([vmin, vmax])
+            else:
+                set_parts.append("voltage = %s")
+                params.append(None)
+                
+        if "notes" in payload:
+            set_parts.append("notes = %s")
+            params.append(payload["notes"])
+        
+        if not set_parts:
+            raise HTTPException(400, "No fields to update")
+        
+        # Добавляем ID в параметры
+        params.append(battery_id)
+        
+        sql = f"""
+            UPDATE batteries 
+            SET {', '.join(set_parts)}
+            WHERE id = %s
+            RETURNING id, name, chemistry, capacity, voltage, notes
+        """
+        
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            
+        if not row:
+            raise HTTPException(404, f"Battery {battery_id} not found")
+            
+        conn.commit()
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "chemistry": row["chemistry"],
+            "capacity": float(row["capacity"]) if row["capacity"] is not None else None,
+            "voltage": row["voltage"],
+            "notes": row["notes"],
+        }
+        
+    except Exception as e:
+        if conn: conn.rollback()
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn: put_conn(conn)
 
+# Обновление эксперимента
+@app.put("/api/experiments/{experiment_id}")
+def api_update_experiment(experiment_id: int, payload: Dict):
+    """
+    Обновляет данные эксперимента.
+    """
+    conn = None
+    try:
+        conn = get_conn()
+        
+        set_parts = []
+        params = []
+        
+        if "format" in payload:
+            set_parts.append("format = %s")
+            params.append(payload["format"])
+            
+        if "date" in payload:
+            if payload["date"]:
+                try:
+                    exp_date = datetime.strptime(payload["date"], "%Y-%m-%d").date()
+                    set_parts.append("date = %s")
+                    params.append(exp_date)
+                except Exception:
+                    # Игнорируем неверный формат даты
+                    pass
+            else:
+                set_parts.append("date = %s")
+                params.append(None)
+                
+        if "duration" in payload:
+            set_parts.append("duration = %s")
+            params.append(payload["duration"])
+            
+        if "notes" in payload:
+            set_parts.append("notes = %s")
+            params.append(payload["notes"])
+        
+        if not set_parts:
+            raise HTTPException(400, "No fields to update")
+        
+        params.append(experiment_id)
+        
+        sql = f"""
+            UPDATE experiments 
+            SET {', '.join(set_parts)}
+            WHERE id = %s
+            RETURNING id, battery, format, table_path, date, duration, notes
+        """
+        
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            
+        if not row:
+            raise HTTPException(404, f"Experiment {experiment_id} not found")
+            
+        conn.commit()
+        
+        dt = row["date"].isoformat() if row["date"] is not None else None
+        return {
+            "id": row["id"],
+            "battery": row["battery"],
+            "format": row["format"],
+            "table_path": row["table_path"],
+            "date": dt,
+            "duration": float(row["duration"]) if row["duration"] is not None else None,
+            "notes": row["notes"],
+        }
+        
+    except Exception as e:
+        if conn: conn.rollback()
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn: put_conn(conn)
 
+# Удаление батареи
+@app.delete("/api/batteries/{battery_id}")
+def api_delete_battery(battery_id: int):
+    """
+    Удаляет батарею и все связанные эксперименты.
+    """
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            # Сначала удаляем эксперименты
+            cur.execute("DELETE FROM experiments WHERE battery = %s", (battery_id,))
+            # Затем удаляем батарею
+            cur.execute("DELETE FROM batteries WHERE id = %s", (battery_id,))
+        conn.commit()
+        return {"message": f"Battery {battery_id} and its experiments deleted"}
+    except Exception as e:
+        if conn: 
+            conn.rollback()
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn: 
+            put_conn(conn)
 
-
+# Удаление эксперимента
+@app.delete("/api/experiments/{experiment_id}")
+def api_delete_experiment(experiment_id: int):
+    """
+    Удаляет эксперимент.
+    """
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM experiments WHERE id = %s", (experiment_id,))
+        conn.commit()
+        return {"message": f"Experiment {experiment_id} deleted"}
+    except Exception as e:
+        if conn: 
+            conn.rollback()
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn: 
+            put_conn(conn)
 
 
 

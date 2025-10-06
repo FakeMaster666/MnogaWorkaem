@@ -152,7 +152,7 @@
 <!----------------------------------------------------------> 
 
 <!-- Модаль результата удаления батарейки -->
-<div id="deleteConfirmModal" class="modal-backdrop">
+<!-- <div id="deleteConfirmModal" class="modal-backdrop">
   <div class="modal">
     <h3>Удаление батарейки</h3>
     <p id="deleteConfirmText">Вы уверены, что хотите удалить эту батарейку? Это также удалит все связанные эксперименты.</p>
@@ -163,7 +163,9 @@
   </div>
 </div>
 
-<!-- Модаль результата -->
+
+
+
 <div id="deleteResultModal" class="modal-backdrop">
   <div class="modal">
     <h3 id="deleteResultTitle">Результат</h3>
@@ -197,7 +199,7 @@
   </div>
 </div>
 
-<!-- Модаль результата удаления эксперимента -->
+Модаль результата удаления эксперимента --
 <div id="deleteExpResultModal" class="modal-backdrop">
   <div class="modal">
     <h3 id="deleteExpResultTitle">Результат</h3>
@@ -206,7 +208,94 @@
       <button id="deleteExpResultOk">OK</button>
     </div>
   </div>
+</div> -->
+
+<!-- Модаль редактирования батареи -->
+<div id="editBatteryModal" class="modal-backdrop">
+  <div class="modal edit-modal" style="width: 500px;">
+    <h3>Редактировать батарею</h3>
+    <div class="row">
+      <label for="editBatteryName">Name</label>
+      <input id="editBatteryName" type="text">
+    </div>
+    <div class="row">
+      <label for="editBatteryChemistry">Chemistry</label>
+      <input id="editBatteryChemistry" type="text">
+    </div>
+    <div class="row">
+      <label for="editBatteryCapacity">Capacity (mAh)</label>
+      <input id="editBatteryCapacity" type="number" min="0" step="1">
+    </div>
+    <div class="row">
+      <label for="editBatteryVoltage1">Voltage Min (V)</label>
+      <input id="editBatteryVoltage1" type="number" min="0" step="0.1">
+    </div>
+    <div class="row">
+      <label for="editBatteryVoltage2">Voltage Max (V)</label>
+      <input id="editBatteryVoltage2" type="number" min="0" step="0.1">
+    </div>
+    <div class="row">
+      <label for="editBatteryNotes">Notes</label>
+      <textarea id="editBatteryNotes"></textarea>
+    </div>
+    <div class="actions">
+      <button id="editBatteryDelete" class="delete-btn">Удалить</button>
+      <div>
+        <button id="editBatteryCancel">Отмена</button>
+        <button id="editBatterySave" class="save-btn">Сохранить</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Модаль редактирования эксперимента -->
+<div id="editExperimentModal" class="modal-backdrop">
+  <div class="modal edit-modal" style="width: 500px;">
+    <h3>Редактировать эксперимент</h3>
+    <div class="row">
+      <label for="editExperimentFormat">Format</label>
+      <input id="editExperimentFormat" type="text">
+    </div>
+    <div class="row">
+      <label for="editExperimentDate">Date</label>
+      <input id="editExperimentDate" type="date">
+    </div>
+    <div class="row">
+      <label for="editExperimentDuration">Duration (s)</label>
+      <input id="editExperimentDuration" type="number" min="0" step="0.001">
+    </div>
+    <div class="row">
+      <label for="editExperimentNotes">Notes</label>
+      <textarea id="editExperimentNotes"></textarea>
+    </div>
+    <div class="actions">
+      <button id="editExperimentDelete" class="delete-btn">Удалить</button>
+      <div>
+        <button id="editExperimentCancel">Отмена</button>
+        <button id="editExperimentSave" class="save-btn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модаль подтверждения удаления -->
+<div id="deleteConfirmModal" class="modal-backdrop">
+  <div class="modal">
+    <h3 id="deleteConfirmTitle">Подтверждение удаления</h3>
+    <p id="deleteConfirmText">Вы уверены, что хотите удалить эту запись?</p>
+    <div class="actions">
+      <button id="deleteConfirmCancel">Отмена</button>
+      <button id="deleteConfirmOk" class="delete-btn">Удалить</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
 
 <!-----------Фильтр-----------------------------------> 
 

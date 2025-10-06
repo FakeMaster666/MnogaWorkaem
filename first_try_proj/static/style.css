@@ -90,7 +90,7 @@ tr:hover { background: #f9f9f9; cursor: pointer; }
 
 
 /*    -------------------------------------------------------------------------------------------------------   */
-#batteryTable tr,
+/* #batteryTable tr,
 #experimentTable tr {
   cursor: context-menu;
 }
@@ -100,7 +100,7 @@ tr:hover { background: #f9f9f9; cursor: pointer; }
   background-color: #f5f5f5;
 }
 
-/* Стили для кнопок в модалях */
+/* Стили для кнопок в мод
 .danger {
   background-color: #d32f2f;
   color: white;
@@ -131,7 +131,80 @@ tr:hover { background: #f9f9f9; cursor: pointer; }
 #experimentTable td:first-child::after {
   margin-left: 5px;
   font-size: 12px;
+} */
+
+
+/* Стили для модалей редактирования */
+.edit-modal .row {
+  margin-bottom: 12px;
 }
+
+.edit-modal label {
+  min-width: 120px;
+  display: inline-block;
+}
+
+.edit-modal input,
+.edit-modal textarea {
+  width: 250px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.edit-modal textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.edit-modal .actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.edit-modal .delete-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-modal .delete-btn:hover {
+  background-color: #b71c1c;
+}
+
+.edit-modal .save-btn {
+  background-color: #2ba4b4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-modal .save-btn:hover {
+  background-color: #238a99;
+}
+
+/* Подсветка ID ячеек */
+#batteryTable td:first-child,
+#experimentTable td:first-child {
+  cursor: context-menu;
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+#batteryTable td:first-child:hover,
+#experimentTable td:first-child:hover {
+  background-color: #e9ecef;
+}
+
+
+
+
 /*    ----------------------------------Фильтр----------------------------------------------------------   */
 
 .filter-section {
@@ -195,5 +268,4 @@ tr:hover { background: #f9f9f9; cursor: pointer; }
 .filter-btn.active {
   background: #2ba4b4;
 }
-
 

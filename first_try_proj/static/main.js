@@ -112,6 +112,7 @@ let currentBatteryId = null;
 // }
 
 
+
 function updateSortIcons(tableSelector, currentSortColumn, currentSortOrder) {
   document.querySelectorAll(`${tableSelector} th[data-sort]`).forEach(th => {
     const col = th.getAttribute('data-sort');
@@ -564,7 +565,6 @@ plotBtn.addEventListener("click", () => {
 
 
 // УДАЛЕНИЕ БАТАРЕЙКИ 
-//////////////////////////////////////////////////
 
 // === УНИВЕРСАЛЬНЫЙ КОД ДЛЯ УДАЛЕНИЯ ===
 
@@ -592,111 +592,387 @@ const deleteConfig = {
   }
 };
 
-// Универсальная функция для показа подтверждения удаления
-function showDeleteConfirm(type, id, data) {
-  const config = deleteConfig[type];
-  document.getElementById(config.confirmText).textContent = config.getConfirmText(id, data);
-  document.getElementById(config.confirmModal).dataset.deleteType = type;
-  document.getElementById(config.confirmModal).dataset.deleteId = id;
-  document.getElementById(config.confirmModal).dataset.deleteData = JSON.stringify(data);
-  openModal(document.getElementById(config.confirmModal));
+// // Универсальная функция для показа подтверждения удаления
+// function showDeleteConfirm(type, id, data) {
+//   const config = deleteConfig[type];
+//   document.getElementById(config.confirmText).textContent = config.getConfirmText(id, data);
+//   document.getElementById(config.confirmModal).dataset.deleteType = type;
+//   document.getElementById(config.confirmModal).dataset.deleteId = id;
+//   document.getElementById(config.confirmModal).dataset.deleteData = JSON.stringify(data);
+//   openModal(document.getElementById(config.confirmModal));
+// }
+
+// // Универсальная функция выполнения удаления
+// async function executeDelete() {
+//   const confirmModal = document.activeElement.closest('.modal-backdrop');
+//   const type = confirmModal.dataset.deleteType;
+//   const id = confirmModal.dataset.deleteId;
+//   const config = deleteConfig[type];
+  
+//   closeModal(confirmModal);
+  
+//   try {
+//     const response = await fetch(`${config.endpoint}/${id}`, {
+//       method: 'DELETE'
+//     });
+    
+//     if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+    
+//     const result = await response.json();
+//     showDeleteResult('success', result.message, config);
+    
+//   } catch (error) {
+//     showDeleteResult('error', `Не удалось удалить: ${error.message}`, config);
+//   }
+// }
+
+// // Универсальная функция показа результата
+// async function showDeleteResult(status, message, config) {
+//   document.getElementById(config.resultTitle).textContent = status === 'success' ? 'Успех' : 'Ошибка';
+//   document.getElementById(config.resultText).textContent = message;
+//   document.getElementById(config.resultModal).dataset.deleteType = config.endpoint;
+//   document.getElementById(config.resultModal).dataset.successCallback = status === 'success';
+//   openModal(document.getElementById(config.resultModal));
+// }
+
+// // Обработчик закрытия модали результата
+// async function handleDeleteResultClose() {
+//   const resultModal = document.activeElement.closest('.modal-backdrop');
+//   const shouldRefresh = resultModal.dataset.successCallback === 'true';
+//   const config = Object.values(deleteConfig).find(c => c.endpoint === resultModal.dataset.deleteType);
+  
+//   closeModal(resultModal);
+//   if (shouldRefresh && config && config.successCallback) {
+//     config.successCallback();
+//   }
+// }
+
+// // Настройка обработчиков для всех модалей удаления
+// async function setupDeleteHandlers() {
+//   // Подтверждение удаления
+//   document.querySelectorAll('#deleteConfirmOk, #deleteExpConfirmOk').forEach(btn => {
+//     btn.addEventListener('click', executeDelete);
+//   });
+  
+//   // Отмена удаления
+//   document.querySelectorAll('#deleteConfirmCancel, #deleteExpConfirmCancel').forEach(btn => {
+//     btn.addEventListener('click', function() {
+//       closeModal(this.closest('.modal-backdrop'));
+//     });
+//   });
+  
+//   // Закрытие результата
+//   document.querySelectorAll('#deleteResultOk, #deleteExpResultOk').forEach(btn => {
+//     btn.addEventListener('click', handleDeleteResultClose);
+//   });
+// }
+
+// // === ОБРАБОТЧИКИ ТАБЛИЦ ===
+
+// batTableBody.addEventListener("contextmenu", ev => {
+//   const tr = ev.target.closest("tr");
+//   if (!tr) return;
+  
+//   ev.preventDefault();
+  
+//   const id = tr.dataset.id;
+//   const batteryData = { name: tr.cells[1].textContent };
+//   showDeleteConfirm('battery', id, batteryData);
+// });
+
+// // Обработчик для таблицы экспериментов - ПРАВЫЙ клик
+// expTableBody.addEventListener("contextmenu", ev => {
+//   const tr = ev.target.closest("tr");
+//   if (!tr) return;
+  
+//   ev.preventDefault();
+  
+//   const id = tr.dataset.id;
+//   const experimentData = {
+//     format: tr.cells[1].textContent,
+//     date: tr.cells[2].textContent
+//   };
+//   showDeleteConfirm('experiment', id, experimentData);
+// });
+
+// // Инициализация при загрузке
+// setupDeleteHandlers();
+
+// Переменные для модалей редактирования
+const editBatteryModal = document.getElementById('editBatteryModal');
+const editExperimentModal = document.getElementById('editExperimentModal');
+const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+
+// Элементы модали батареи
+const editBatteryName = document.getElementById('editBatteryName');
+const editBatteryChemistry = document.getElementById('editBatteryChemistry');
+const editBatteryCapacity = document.getElementById('editBatteryCapacity');
+const editBatteryVoltage1 = document.getElementById('editBatteryVoltage1');
+const editBatteryVoltage2 = document.getElementById('editBatteryVoltage2');
+const editBatteryNotes = document.getElementById('editBatteryNotes');
+const editBatterySave = document.getElementById('editBatterySave');
+const editBatteryCancel = document.getElementById('editBatteryCancel');
+const editBatteryDelete = document.getElementById('editBatteryDelete');
+
+// Элементы модали эксперимента
+const editExperimentFormat = document.getElementById('editExperimentFormat');
+const editExperimentDate = document.getElementById('editExperimentDate');
+const editExperimentDuration = document.getElementById('editExperimentDuration');
+const editExperimentNotes = document.getElementById('editExperimentNotes');
+const editExperimentSave = document.getElementById('editExperimentSave');
+const editExperimentCancel = document.getElementById('editExperimentCancel');
+const editExperimentDelete = document.getElementById('editExperimentDelete');
+
+// Элементы модали подтверждения удаления
+const deleteConfirmTitle = document.getElementById('deleteConfirmTitle');
+const deleteConfirmText = document.getElementById('deleteConfirmText');
+const deleteConfirmCancel = document.getElementById('deleteConfirmCancel');
+const deleteConfirmOk = document.getElementById('deleteConfirmOk');
+
+// Текущие данные для редактирования
+let currentEditData = { type: null, id: null, data: null };
+
+// Обработчики правого клика
+batTableBody.addEventListener("contextmenu", ev => {
+  const td = ev.target.closest("td");
+  if (!td || td.cellIndex !== 0) return; // Только первая ячейка (ID)
+  
+  ev.preventDefault();
+  
+  const tr = td.closest("tr");
+  const id = tr.dataset.id;
+  const batteryData = {
+    name: tr.cells[1].textContent,
+    chemistry: tr.cells[2].textContent,
+    capacity: tr.cells[3].textContent,
+    voltage: tr.cells[4].textContent,
+    notes: "" // Нужно будет получать с сервера
+  };
+  
+  showEditBatteryModal(id, batteryData);
+});
+
+expTableBody.addEventListener("contextmenu", ev => {
+  const td = ev.target.closest("td");
+  if (!td || td.cellIndex !== 0) return; // Только первая ячейка (ID)
+  
+  ev.preventDefault();
+  
+  const tr = td.closest("tr");
+  const id = tr.dataset.id;
+  const experimentData = {
+    format: tr.cells[1].textContent,
+    date: tr.cells[2].textContent,
+    duration: tr.cells[3].textContent,
+    notes: tr.cells[4].textContent
+  };
+  
+  showEditExperimentModal(id, experimentData);
+});
+
+// Функции показа модалей редактирования
+function showEditBatteryModal(id, data) {
+  currentEditData = { type: 'battery', id: id, data: data };
+  
+  // Заполняем поля данными
+  editBatteryName.value = data.name || '';
+  editBatteryChemistry.value = data.chemistry || '';
+  editBatteryCapacity.value = data.capacity || '';
+  editBatteryNotes.value = data.notes || '';
+  
+  // Парсим voltage (формат: "3.7 - 3.9")
+  if (data.voltage && data.voltage.includes(' - ')) {
+    const [min, max] = data.voltage.split(' - ');
+    editBatteryVoltage1.value = min.trim();
+    editBatteryVoltage2.value = max.trim();
+  } else {
+    editBatteryVoltage1.value = '';
+    editBatteryVoltage2.value = '';
+  }
+  
+  openModal(editBatteryModal);
 }
 
-// Универсальная функция выполнения удаления
-async function executeDelete() {
-  const confirmModal = document.activeElement.closest('.modal-backdrop');
-  const type = confirmModal.dataset.deleteType;
-  const id = confirmModal.dataset.deleteId;
-  const config = deleteConfig[type];
+function showEditExperimentModal(id, data) {
+  currentEditData = { type: 'experiment', id: id, data: data };
   
-  closeModal(confirmModal);
+  // Заполняем поля данными
+  editExperimentFormat.value = data.format || '';
+  editExperimentDate.value = data.date || '';
+  editExperimentDuration.value = data.duration || '';
+  editExperimentNotes.value = data.notes || '';
+  
+  openModal(editExperimentModal);
+}
+
+// Обработчики сохранения
+editBatterySave.addEventListener('click', async () => {
+  const payload = {
+    name: editBatteryName.value?.trim() || null,
+    chemistry: editBatteryChemistry.value?.trim() || null,
+    capacity: editBatteryCapacity.value ? Number(editBatteryCapacity.value) : null,
+    voltage: [
+      editBatteryVoltage1.value ? Number(editBatteryVoltage1.value) : null,
+      editBatteryVoltage2.value ? Number(editBatteryVoltage2.value) : null
+    ],
+    notes: editBatteryNotes.value?.trim() || null
+  };
+  
+  await updateBattery(currentEditData.id, payload);
+});
+
+editExperimentSave.addEventListener('click', async () => {
+  const payload = {
+    format: editExperimentFormat.value?.trim() || null,
+    date: editExperimentDate.value || null,
+    duration: editExperimentDuration.value ? Number(editExperimentDuration.value) : null,
+    notes: editExperimentNotes.value?.trim() || null
+  };
+  
+  await updateExperiment(currentEditData.id, payload);
+});
+
+// Обработчики отмены
+editBatteryCancel.addEventListener('click', () => {
+  closeModal(editBatteryModal);
+});
+
+editExperimentCancel.addEventListener('click', () => {
+  closeModal(editExperimentModal);
+});
+
+// Обработчики удаления
+editBatteryDelete.addEventListener('click', () => {
+  showDeleteConfirm('battery', currentEditData.id, currentEditData.data);
+});
+
+editExperimentDelete.addEventListener('click', () => {
+  showDeleteConfirm('experiment', currentEditData.id, currentEditData.data);
+});
+
+// Функция подтверждения удаления
+function showDeleteConfirm(type, id, data) {
+  const config = {
+    battery: {
+      title: 'Удаление батареи',
+      text: `Вы уверены, что хотите удалить батарею "${data.name}" (ID: ${id})? Это также удалит все связанные эксперименты.`
+    },
+    experiment: {
+      title: 'Удаление эксперимента', 
+      text: `Вы уверены, что хотите удалить эксперимент ID: ${id} (Формат: ${data.format})?`
+    }
+  };
+  
+  deleteConfirmTitle.textContent = config[type].title;
+  deleteConfirmText.textContent = config[type].text;
+  deleteConfirmModal.dataset.deleteType = type;
+  deleteConfirmModal.dataset.deleteId = id;
+  
+  // Закрываем модаль редактирования и открываем подтверждение
+  if (type === 'battery') {
+    closeModal(editBatteryModal);
+  } else {
+    closeModal(editExperimentModal);
+  }
+  openModal(deleteConfirmModal);
+}
+
+// Обработчики модали подтверждения удаления
+deleteConfirmCancel.addEventListener('click', () => {
+  closeModal(deleteConfirmModal);
+});
+
+deleteConfirmOk.addEventListener('click', async () => {
+  const type = deleteConfirmModal.dataset.deleteType;
+  const id = deleteConfirmModal.dataset.deleteId;
+  
+  closeModal(deleteConfirmModal);
   
   try {
-    const response = await fetch(`${config.endpoint}/${id}`, {
+    if (type === 'battery') {
+      await deleteBattery(id);
+    } else {
+      await deleteExperiment(id);
+    }
+  } catch (error) {
+    alert(`Ошибка удаления: ${error.message}`);
+  }
+});
+
+// API функции
+async function updateBattery(id, payload) {
+  try {
+    const response = await fetch(`/api/batteries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+    
+    const result = await response.json();
+    closeModal(editBatteryModal);
+    alert('Батарея успешно обновлена');
+    loadBatteries(); // Обновляем таблицу
+    
+  } catch (error) {
+    alert(`Ошибка обновления: ${error.message}`);
+  }
+}
+
+async function updateExperiment(id, payload) {
+  try {
+    const response = await fetch(`/api/experiments/${id}`, {
+      method: 'PUT', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+    
+    const result = await response.json();
+    closeModal(editExperimentModal);
+    alert('Эксперимент успешно обновлен');
+    loadExperiments(currentBatteryId); // Обновляем таблицу
+    
+  } catch (error) {
+    alert(`Ошибка обновления: ${error.message}`);
+  }
+}
+
+async function deleteBattery(id) {
+  try {
+    const response = await fetch(`/api/batteries/${id}`, {
       method: 'DELETE'
     });
     
     if (!response.ok) throw new Error(`Ошибка ${response.status}`);
     
     const result = await response.json();
-    showDeleteResult('success', result.message, config);
+    alert('Батарея и связанные эксперименты удалены');
+    loadBatteries(); // Обновляем таблицу
     
   } catch (error) {
-    showDeleteResult('error', `Не удалось удалить: ${error.message}`, config);
+    throw error;
   }
 }
 
-// Универсальная функция показа результата
-async function showDeleteResult(status, message, config) {
-  document.getElementById(config.resultTitle).textContent = status === 'success' ? 'Успех' : 'Ошибка';
-  document.getElementById(config.resultText).textContent = message;
-  document.getElementById(config.resultModal).dataset.deleteType = config.endpoint;
-  document.getElementById(config.resultModal).dataset.successCallback = status === 'success';
-  openModal(document.getElementById(config.resultModal));
-}
-
-// Обработчик закрытия модали результата
-async function handleDeleteResultClose() {
-  const resultModal = document.activeElement.closest('.modal-backdrop');
-  const shouldRefresh = resultModal.dataset.successCallback === 'true';
-  const config = Object.values(deleteConfig).find(c => c.endpoint === resultModal.dataset.deleteType);
-  
-  closeModal(resultModal);
-  if (shouldRefresh && config && config.successCallback) {
-    config.successCallback();
-  }
-}
-
-// Настройка обработчиков для всех модалей удаления
-async function setupDeleteHandlers() {
-  // Подтверждение удаления
-  document.querySelectorAll('#deleteConfirmOk, #deleteExpConfirmOk').forEach(btn => {
-    btn.addEventListener('click', executeDelete);
-  });
-  
-  // Отмена удаления
-  document.querySelectorAll('#deleteConfirmCancel, #deleteExpConfirmCancel').forEach(btn => {
-    btn.addEventListener('click', function() {
-      closeModal(this.closest('.modal-backdrop'));
+async function deleteExperiment(id) {
+  try {
+    const response = await fetch(`/api/experiments/${id}`, {
+      method: 'DELETE'
     });
-  });
-  
-  // Закрытие результата
-  document.querySelectorAll('#deleteResultOk, #deleteExpResultOk').forEach(btn => {
-    btn.addEventListener('click', handleDeleteResultClose);
-  });
+    
+    if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+    
+    const result = await response.json();
+    alert('Эксперимент удален');
+    loadExperiments(currentBatteryId); // Обновляем таблицу
+    
+  } catch (error) {
+    throw error;
+  }
 }
-
-// === ОБРАБОТЧИКИ ТАБЛИЦ ===
-
-batTableBody.addEventListener("contextmenu", ev => {
-  const tr = ev.target.closest("tr");
-  if (!tr) return;
-  
-  ev.preventDefault();
-  
-  const id = tr.dataset.id;
-  const batteryData = { name: tr.cells[1].textContent };
-  showDeleteConfirm('battery', id, batteryData);
-});
-
-// Обработчик для таблицы экспериментов - ПРАВЫЙ клик
-expTableBody.addEventListener("contextmenu", ev => {
-  const tr = ev.target.closest("tr");
-  if (!tr) return;
-  
-  ev.preventDefault();
-  
-  const id = tr.dataset.id;
-  const experimentData = {
-    format: tr.cells[1].textContent,
-    date: tr.cells[2].textContent
-  };
-  showDeleteConfirm('experiment', id, experimentData);
-});
-
-// Инициализация при загрузке
-setupDeleteHandlers();
 
 
 //////////////////////////////////////////////////
