@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Batteries & Experiments</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    h2 { margin-top: 30px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    th { background: #eee; }
+    tr:hover { background: #f9f9f9; cursor: pointer; }
+    #plotArea { margin-top: 20px; }
+    .hidden { display: none; }
+    #backBtn { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Battery Experiments Viewer</h1>
+
+  <div id="batteriesView">
+    <h2>Список батарей</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Chemistry</th><th>Capacity</th><th>Voltage</th></tr>
+      </thead>
+      <tbody id="batTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="experimentsView" class="hidden">
+    <button id="backBtn">← Назад к батареям</button>
+    <h2>Эксперименты</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Format</th><th>Date</th><th>Duration</th><th>Notes</th></tr>
+      </thead>
+      <tbody id="expTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="plotConfig" class="hidden">
+    <h2>Конфигурация графика</h2>
+    <label>Ось X:
+      <select id="xSelect"></select>
+    </label>
+    <div id="yCheckboxes"></div>
+    <button id="plotBtn">Построить график</button>
+  </div>
+
+  <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data"
+      style="position: fixed; top: 20px; right: 20px; background: #fff; padding: 10px; border: 1px solid #000;">
+  <input type="file" name="file" required>
+  <button type="submit">Загрузить файл</button>
+</form>
+
+  <div id="message"></div>
+
+  <div id="plotArea"></div>
+
+<script>
+const batTableBody = document.getElementById("batTableBody");
+const expTableBody = document.getElementById("expTableBody");
+const batteriesView = document.getElementById("batteriesView");
+const experimentsView = document.getElementById("experimentsView");
+const backBtn = document.getElementById("backBtn");
+const plotConfig = document.getElementById("plotConfig");
+const xSelect = document.getElementById("xSelect");
+const yCheckboxes = document.getElementById("yCheckboxes");
+const plotBtn = document.getElementById("plotBtn");
+const plotArea = document.getElementById("plotArea");
+
+
+let selectedBattery = null;
+let selectedExperiment = null;
+
+// --- helpers
+function escapeHtml(text) {
+  return text === null || text === undefined ? "" :
+    text.toString().replace(/[&<>"']/g, m => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"
+    }[m]));
+}
+
+
+
+
+
+const uploadForm = document.getElementById('uploadForm');
+const fileInput = uploadForm.querySelector('input[type="file"]');
+
+fileInput.addEventListener('change', () => {
+  const fileName = fileInput.files[0]?.name || '';
+  console.log('Выбран файл:', fileName); // можно отображать рядом с кнопкой
+});
+
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!fileInput.files.length) return;
+   const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+   try {
+    const resp = await fetch('/upload', { method: 'POST', body: formData });
+    const result = await resp.json();
+    alert(`Файл ${result.filename} загружен!`);
+  } catch (err) {
+    alert('Ошибка загрузки: ' + err.message);
+  }
+});
+
+
+
+
+
+// --- load batteries
+async function loadBatteries() {
+  const resp = await fetch("/api/batteries");
+  if (!resp.ok) { batTableBody.innerHTML = "<tr><td colspan=5>Ошибка API</td></tr>"; return; }
+  const arr = await resp.json();
+  batTableBody.innerHTML = "";
+  arr.forEach(b => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = b.id;
+    tr.innerHTML = `
+      <td>${b.id}</td>
+      <td>${escapeHtml(b.name||"")}</td>
+      <td>${escapeHtml(b.chemistry||"")}</td>
+      <td>${b.capacity ?? ""}</td>
+      <td>${b.voltage ?? ""}</td>`;
+    batTableBody.appendChild(tr);
+  });
+}
+
+// --- load experiments for battery
+async function loadExperiments(batteryId) {
+  const resp = await fetch(`/api/experiments?battery_id=${batteryId}`);
+  if (!resp.ok) { expTableBody.innerHTML = "<tr><td colspan=5>Ошибка API</td></tr>"; return; }
+  const arr = await resp.json();
+  expTableBody.innerHTML = "";
+  arr.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = e.id;
+    tr.innerHTML = `
+      <td>${e.id}</td>
+      <td>${escapeHtml(e.format||"")}</td>
+      <td>${escapeHtml(e.date||"")}</td>
+      <td>${e.duration ?? ""}</td>
+      <td>${escapeHtml(e.notes||"")}</td>`;
+    expTableBody.appendChild(tr);
+  });
+}
+
+// --- setup plot config
+async function setupPlotConfig(expId) {
+  const resp = await fetch(`/api/experiment/${expId}/columns`);
+  if (!resp.ok) { alert("Ошибка получения колонок"); return; }
+  const data = await resp.json();
+  const cols = data.columns;
+  xSelect.innerHTML = "";
+  cols.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    xSelect.appendChild(opt);
+  });
+  yCheckboxes.innerHTML = "";
+  cols.forEach(c => {
+    const id = "y_" + c;
+    const div = document.createElement("div");
+    div.innerHTML = `<label><input type="checkbox" value="${c}" id="${id}"> ${c}</label>`;
+    yCheckboxes.appendChild(div);
+  });
+  plotConfig.classList.remove("hidden");
+}
+
+// --- draw plot
+async function drawPlot(expId, xCol, yCols) {
+  const resp = await fetch(`/api/experiment/${expId}/data?x=${encodeURIComponent(xCol)}&ys=${encodeURIComponent(yCols.join(","))}`);
+  if (!resp.ok) { alert("Ошибка загрузки данных"); return; }
+  const data = await resp.json();
+  const traces = [];
+  for (const [col, arr] of Object.entries(data.ys)) {
+    traces.push({
+      x: data.x,
+      y: arr,
+      mode: "lines",
+      name: col
+    });
+  }
+  Plotly.newPlot(plotArea, traces, {title: `Эксперимент ${expId}`, xaxis:{title:xCol}});
+}
+
+// --- event delegation
+batTableBody.addEventListener("click", ev => {
+  const tr = ev.target.closest("tr");
+  if (!tr) return;
+  const id = tr.dataset.id;
+  selectedBattery = id;
+  batteriesView.classList.add("hidden");
+  experimentsView.classList.remove("hidden");
+  loadExperiments(id);
+});
+
+expTableBody.addEventListener("click", ev => {
+  const tr = ev.target.closest("tr");
+  if (!tr) return;
+  const id = tr.dataset.id;
+  selectedExperiment = id;
+  setupPlotConfig(id);
+});
+
+backBtn.addEventListener("click", () => {
+  experimentsView.classList.add("hidden");
+  batteriesView.classList.remove("hidden");
+  plotConfig.classList.add("hidden");
+  plotArea.innerHTML = "";
+});
+
+plotBtn.addEventListener("click", () => {
+  if (!selectedExperiment) return;
+  const xCol = xSelect.value;
+  const yCols = [...yCheckboxes.querySelectorAll("input:checked")].map(cb => cb.value);
+  if (!xCol || yCols.length === 0) { alert("Выбери X и хотя бы один Y"); return; }
+  drawPlot(selectedExperiment, xCol, yCols);
+});
+
+
+
+function show(el) {  el.classList.remove('hidden'); el.classList.remove('hidden'); }
+function hide(el) { el.style.display = 'none'; el.classList.add('hidden'); }
+
+async function safeParseJson(resp) {
+  const text = await resp.text();
+  try { return { ok: true, data: JSON.parse(text) }; }
+  catch { return { ok: false, data: text }; }
+}
+
+async function postJSON(url, payload) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const parsed = await safeParseJson(resp);
+  if (!resp.ok) {
+    const msg = parsed.ok ? JSON.stringify(parsed.data) : parsed.data;
+    throw new Error(`HTTP ${resp.status}: ${msg}`);
+  }
+  return parsed.ok ? parsed.data : { raw: parsed.data };
+}
+
+// ======= Battery Wizard =======
+function showBatteryWizard() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('batteryModal');
+    const modeRadios = modal.querySelectorAll('input[name="batMode"]');
+    const existingBlock = document.getElementById('batExisting');
+    const newBlock = document.getElementById('batNew');
+
+    const idInput = document.getElementById('batExistingId');
+    const nameInput = document.getElementById('batName');
+    const chemInput = document.getElementById('batChem');
+    const capInput = document.getElementById('batCap');
+    const vminInput = document.getElementById('batVmin');
+    const vmaxInput = document.getElementById('batVmax');
+    const notesInput = document.getElementById('batNotes');
+
+    const cancelBtn = document.getElementById('batCancelBtn');
+    const okBtn = document.getElementById('batOkBtn');
+
+    function syncMode() {
+      const mode = [...modeRadios].find(r => r.checked)?.value || 'existing';
+      if (mode === 'existing') { show(existingBlock); hide(newBlock); }
+      else { hide(existingBlock); show(newBlock); }
+    }
+    modeRadios.forEach(r => r.addEventListener('change', syncMode));
+    syncMode(); show(modal);
+
+    function cleanup() {
+      hide(modal);
+      modeRadios.forEach(r => r.removeEventListener('change', syncMode));
+      cancelBtn.onclick = okBtn.onclick = null;
+    }
+
+    cancelBtn.onclick = () => { cleanup(); resolve({ cancelled: true }); };
+    okBtn.onclick = () => {
+      const mode = [...modeRadios].find(r => r.checked)?.value || 'existing';
+      if (mode === 'existing') {
+        const id = Number(idInput.value);
+        if (!Number.isFinite(id) || id <= 0) { alert('Введите корректный Battery ID'); return; }
+        cleanup(); resolve({ mode: 'existing', batteryId: id });
+        return;
+      }
+      const name = (nameInput.value || '').trim();
+      const chemistry = (chemInput.value || '').trim();
+      const capacity = capInput.value ? Number(capInput.value) : null;
+      const vmin = vminInput.value ? Number(vminInput.value) : null;
+      const vmax = vmaxInput.value ? Number(vmaxInput.value) : null;
+      const notes = (notesInput.value || '').trim() || null;
+
+      if (!name || !chemistry) { alert('Заполните Name и Chemistry'); return; }
+      if (capInput.value && !Number.isFinite(capacity)) { alert('Capacity должно быть числом'); return; }
+
+      let voltage = null;
+      if (vminInput.value || vmaxInput.value) {
+        if (!Number.isFinite(vmin) || !Number.isFinite(vmax)) { alert('Voltage min/max должны быть числами'); return; }
+        voltage = [vmin, vmax]; // диапазон [min, max]
+      }
+      cleanup();
+      resolve({ mode: 'new', batteryFields: { name, chemistry, capacity, voltage, notes } });
+    };
+  });
+}
+
+// ======= Experiment Wizard =======
+function showExperimentWizard() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('expModal');
+    const dateInput = document.getElementById('expDate');
+    const durInput = document.getElementById('expDuration');
+    const notesInput = document.getElementById('expNotes');
+
+    const cancelBtn = document.getElementById('expCancelBtn');
+    const okBtn = document.getElementById('expOkBtn');
+
+    show(modal);
+    function cleanup() { hide(modal); cancelBtn.onclick = okBtn.onclick = null; }
+    cancelBtn.onclick = () => { cleanup(); resolve({ cancelled: true }); };
+    okBtn.onclick = () => {
+      const date_str = dateInput.value || null;
+      const duration = durInput.value ? Number(durInput.value) : null;
+      const notes = (notesInput.value || '').trim() || null;
+      if (durInput.value && !Number.isFinite(duration)) { alert('Duration должно быть числом'); return; }
+      cleanup(); resolve({ date_str, duration, notes });
+    };
+  });
+}
+
+// ======= Upload with battery & experiment =======
+async function uploadFileWithBatteryAndExp(file, batteryId, exp) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('battery_id', String(batteryId));
+  if (exp?.date_str) formData.append('date_str', exp.date_str);
+  if (exp?.duration != null) formData.append('duration', String(exp.duration));
+  if (exp?.notes) formData.append('notes', exp.notes);
+
+  const resp = await fetch('/upload', { method: 'POST', body: formData });
+  const parsed = await safeParseJson(resp);
+  if (!resp.ok) {
+    const msg = parsed.ok ? JSON.stringify(parsed.data) : parsed.data;
+    throw new Error(`Ошибка загрузки: HTTP ${resp.status} ${msg}`);
+  }
+  return parsed.data || {};
+}
+
+// ======= Hook: intercept uploadForm and run wizards =======
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const file = fileInput.files?.[0];
+  if (!file) { alert('Не выбран файл.'); return; }
+
+  try {
+    // 1) Батарея
+    const bat = await showBatteryWizard();
+    if (bat.cancelled) return;
+
+    let batteryId;
+    if (bat.mode === 'existing') {
+      batteryId = bat.batteryId;
+    } else {
+      const created = await postJSON('/api/batteries', bat.batteryFields);
+      if (!created?.id) throw new Error('Сервер не вернул id новой батареи.');
+      batteryId = created.id;
+    }
+
+    // 2) Эксперимент
+    const exp = await showExperimentWizard();
+    if (exp.cancelled) return;
+
+    // 3) Загрузка файла
+    const result = await uploadFileWithBatteryAndExp(file, batteryId, exp);
+
+    alert(
+      `Готово!\n` +
+      `Файл: ${result?.filename || file.name}\n` +
+      `Battery ID: ${batteryId}\n` +
+      `Experiment ID: ${result?.experiment_id ?? '—'}`
+    );
+
+    // Обновить список, если та же батарея открыта
+    if (selectedBattery == batteryId) {
+      loadExperiments(batteryId);
+    }
+  } catch (err) {
+    alert(String(err.message || err));
+  }
+});
+
+
+//---------zdes' rabotal daun
+
+
+
+
+function show(el) {  el.classList.remove('hidden'); el.classList.remove('hidden'); }
+function hide(el) { el.style.display = 'none'; el.classList.add('hidden'); }
+
+async function safeParseJson(resp) {
+  const text = await resp.text();
+  try { return { ok: true, data: JSON.parse(text) }; }
+  catch { return { ok: false, data: text }; }
+}
+
+async function postJSON(url, payload) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const parsed = await safeParseJson(resp);
+  if (!resp.ok) {
+    const msg = parsed.ok ? JSON.stringify(parsed.data) : parsed.data;
+    throw new Error(`HTTP ${resp.status}: ${msg}`);
+  }
+  return parsed.ok ? parsed.data : { raw: parsed.data };
+}
+
+// ======= Battery Wizard =======
+function showBatteryWizard() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('batteryModal');
+    const modeRadios = modal.querySelectorAll('input[name="batMode"]');
+    const existingBlock = document.getElementById('batExisting');
+    const newBlock = document.getElementById('batNew');
+
+    const idInput = document.getElementById('batExistingId');
+    const nameInput = document.getElementById('batName');
+    const chemInput = document.getElementById('batChem');
+    const capInput = document.getElementById('batCap');
+    const vminInput = document.getElementById('batVmin');
+    const vmaxInput = document.getElementById('batVmax');
+    const notesInput = document.getElementById('batNotes');
+
+    const cancelBtn = document.getElementById('batCancelBtn');
+    const okBtn = document.getElementById('batOkBtn');
+
+    function syncMode() {
+      const mode = [...modeRadios].find(r => r.checked)?.value || 'existing';
+      if (mode === 'existing') { show(existingBlock); hide(newBlock); }
+      else { hide(existingBlock); show(newBlock); }
+    }
+    modeRadios.forEach(r => r.addEventListener('change', syncMode));
+    syncMode(); show(modal);
+
+    function cleanup() {
+      hide(modal);
+      modeRadios.forEach(r => r.removeEventListener('change', syncMode));
+      cancelBtn.onclick = okBtn.onclick = null;
+    }
+
+    cancelBtn.onclick = () => { cleanup(); resolve({ cancelled: true }); };
+    okBtn.onclick = () => {
+      const mode = [...modeRadios].find(r => r.checked)?.value || 'existing';
+      if (mode === 'existing') {
+        const id = Number(idInput.value);
+        if (!Number.isFinite(id) || id <= 0) { alert('Введите корректный Battery ID'); return; }
+        cleanup(); resolve({ mode: 'existing', batteryId: id });
+        return;
+      }
+      const name = (nameInput.value || '').trim();
+      const chemistry = (chemInput.value || '').trim();
+      const capacity = capInput.value ? Number(capInput.value) : null;
+      const vmin = vminInput.value ? Number(vminInput.value) : null;
+      const vmax = vmaxInput.value ? Number(vmaxInput.value) : null;
+      const notes = (notesInput.value || '').trim() || null;
+
+      if (!name || !chemistry) { alert('Заполните Name и Chemistry'); return; }
+      if (capInput.value && !Number.isFinite(capacity)) { alert('Capacity должно быть числом'); return; }
+
+      let voltage = null;
+      if (vminInput.value || vmaxInput.value) {
+        if (!Number.isFinite(vmin) || !Number.isFinite(vmax)) { alert('Voltage min/max должны быть числами'); return; }
+        voltage = [vmin, vmax]; // диапазон [min, max]
+      }
+      cleanup();
+      resolve({ mode: 'new', batteryFields: { name, chemistry, capacity, voltage, notes } });
+    };
+  });
+}
+
+// ======= Experiment Wizard =======
+function showExperimentWizard() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('expModal');
+    const dateInput = document.getElementById('expDate');
+    const durInput = document.getElementById('expDuration');
+    const notesInput = document.getElementById('expNotes');
+
+    const cancelBtn = document.getElementById('expCancelBtn');
+    const okBtn = document.getElementById('expOkBtn');
+
+    show(modal);
+    function cleanup() { hide(modal); cancelBtn.onclick = okBtn.onclick = null; }
+    cancelBtn.onclick = () => { cleanup(); resolve({ cancelled: true }); };
+    okBtn.onclick = () => {
+      const date_str = dateInput.value || null;
+      const duration = durInput.value ? Number(durInput.value) : null;
+      const notes = (notesInput.value || '').trim() || null;
+      if (durInput.value && !Number.isFinite(duration)) { alert('Duration должно быть числом'); return; }
+      cleanup(); resolve({ date_str, duration, notes });
+    };
+  });
+}
+
+// ======= Upload with battery & experiment =======
+async function uploadFileWithBatteryAndExp(file, batteryId, exp) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('battery_id', String(batteryId));
+  if (exp?.date_str) formData.append('date_str', exp.date_str);
+  if (exp?.duration != null) formData.append('duration', String(exp.duration));
+  if (exp?.notes) formData.append('notes', exp.notes);
+
+  const resp = await fetch('/upload', { method: 'POST', body: formData });
+  const parsed = await safeParseJson(resp);
+  if (!resp.ok) {
+    const msg = parsed.ok ? JSON.stringify(parsed.data) : parsed.data;
+    throw new Error(`Ошибка загрузки: HTTP ${resp.status} ${msg}`);
+  }
+  return parsed.data || {};
+}
+
+// ======= Hook: intercept uploadForm and run wizards =======
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const file = fileInput.files?.[0];
+  if (!file) { alert('Не выбран файл.'); return; }
+
+  try {
+    // 1) Батарея
+    const bat = await showBatteryWizard();
+    if (bat.cancelled) return;
+
+    let batteryId;
+    if (bat.mode === 'existing') {
+      batteryId = bat.batteryId;
+    } else {
+      const created = await postJSON('/api/batteries', bat.batteryFields);
+      if (!created?.id) throw new Error('Сервер не вернул id новой батареи.');
+      batteryId = created.id;
+    }
+
+    // 2) Эксперимент
+    const exp = await showExperimentWizard();
+    if (exp.cancelled) return;
+
+    // 3) Загрузка файла
+    const result = await uploadFileWithBatteryAndExp(file, batteryId, exp);
+
+    alert(
+      `Готово!\n` +
+      `Файл: ${result?.filename || file.name}\n` +
+      `Battery ID: ${batteryId}\n` +
+      `Experiment ID: ${result?.experiment_id ?? '—'}`
+    );
+
+    // Обновить список, если та же батарея открыта
+    if (selectedBattery == batteryId) {
+      loadExperiments(batteryId);
+    }
+  } catch (err) {
+    alert(String(err.message || err));
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- init
+loadBatteries();
+</script>
+</body>
+</html>

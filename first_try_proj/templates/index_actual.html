@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Batteries & Experiments</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <!-- <style src="/static/style.css"></style> -->
+   <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Battery Experiments Viewer</h1>
+
+  <div id="batteriesView">
+    <h2>Список батарей</h2>
+    <table id = batteryTable>
+      <thead>
+            <tr>    
+                <th data-sort="ID">ID</th> 
+                <th data-sort="Name">Name</th>
+                <th data-sort="Chemistry">Chemistry</th>
+                <th data-sort="Capacity">Capacity</th>
+                <th>Voltage</th>
+            </tr>
+        </thead>
+      <tbody id="batTableBody"></tbody>
+    </table>
+    <div class="pagination">
+        <button id="prevPage">← Назад</button>
+        <span id="pageInfo">Страница 1</span>
+        <button id="nextPage">Вперёд →</button>
+    </div>
+  </div>
+
+  <div id="experimentsView" class="hidden">
+    <button id="backBtn">← Назад к батареям</button>
+    <h2>Эксперименты</h2>
+    <table id = experimentTable>
+      <thead>
+        <tr>
+            <th data-sort="ID">ID</th>
+            <th data-sort="Format">Format</th>
+            <th data-sort="Date">Date</th>
+            <th data-sort="Duration">Duration</th>
+            <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="expTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="plotConfig" class="hidden">
+    <h2>Конфигурация графика</h2>
+    <label>Ось X:
+      <select id="xSelect"></select>
+    </label>
+    <div id="yCheckboxes"></div>
+    <button id="plotBtn">Построить график</button>
+  </div>
+
+  <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data"
+      style="position: fixed; top: 20px; right: 20px; background: #fff; padding: 10px; border: 1px solid #000;">
+  <input type="file" name="file" required title="Загрузка данных">
+
+</form>
+
+  <div id="message"></div>
+
+  <div id="plotArea"></div>
+
+
+<!-- 1) Вопрос: батарея уже есть? -->
+<div id="batteryChoiceModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Эта батарея уже есть в базе?</h3>
+    <div class="row">
+      <button id="batChoiceYes">Да, я знаю ID</button>
+      <button id="batChoiceNo">Нет, хочу создать</button>
+    </div>
+    <div class="actions">
+      <button id="batChoiceCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2) Ввод ID батареи -->
+<div id="batteryIdModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Введите ID существующей батареи</h3>
+    <div class="row">
+      <label for="batteryIdInput">Battery ID</label>
+      <input id="batteryIdInput" type="number" min="1" placeholder="например, 12">
+    </div>
+    <div class="actions">
+      <button id="batteryIdCancel">Назад</button>
+      <button id="batteryIdOk">Далее</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3) Форма создания батареи -->
+<div id="batteryFormModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Новая батарея</h3>
+    <div class="row">
+      <label for="bf_name">Name</label>
+      <input id="bf_name" type="text" placeholder="например, LG INR18650-MJ1">
+    </div>
+    <div class="row">
+      <label for="bf_chem">Chemistry</label>
+      <input id="bf_chem" type="text" placeholder="например, NMC">
+    </div>
+    <div class="row">
+      <label for="bf_cap">Capacity (mAh)</label>
+      <input id="bf_cap" type="number" min="0" step="1" placeholder="например, 3500">
+    </div>
+    <div class="row">
+      <label for="bf_volt_1">Voltage (V)</label>
+      <input id="bf_volt_1" type="number" min="0" step="0.1" placeholder="мин. например, 3.7">
+      <input id="bf_volt_2" type="number" min="0" step="0.1" placeholder="макс. например, 3.9">
+    </div>
+    <div class="actions">
+      <button id="batteryFormCancel">Назад</button>
+      <button id="batteryFormCreate">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4) Форма эксперимента -->
+<div id="experimentFormModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Информация об эксперименте</h3>
+    <div class="row">
+      <label for="ef_date">Date</label>
+      <input id="ef_date" type="date" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="row">
+      <label for="ef_dur">Duration (s)</label>
+      <input id="ef_dur" type="number" min="0" step="0.001" placeholder="в секундах">
+    </div>
+    <div class="row">
+      <label for="ef_notes">Notes</label>
+      <textarea id="ef_notes" placeholder="краткие заметки"></textarea>
+    </div>
+    <div class="actions">
+      <button id="experimentFormCancel">Отмена</button>
+      <button id="experimentFormOk">Загрузить файл</button>
+    </div>
+  </div>
+</div>
+
+
+<!----------------------------------------------------------> 
+
+<!-- Модаль результата удаления батарейки -->
+<!-- <div id="deleteConfirmModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Удаление батарейки</h3>
+    <p id="deleteConfirmText">Вы уверены, что хотите удалить эту батарейку? Это также удалит все связанные эксперименты.</p>
+    <div class="actions">
+      <button id="deleteConfirmCancel">Отмена</button>
+      <button id="deleteConfirmOk" class="danger">Удалить</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div id="deleteResultModal" class="modal-backdrop">
+  <div class="modal">
+    <h3 id="deleteResultTitle">Результат</h3>
+    <p id="deleteResultText"></p>
+    <div class="actions">
+      <button id="deleteResultOk">OK</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="deleteExpConfirmModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Удаление эксперимента</h3>
+    <p id="deleteExpConfirmText">Вы уверены, что хотите удалить этот эксперимент?</p>
+    <div class="actions">
+      <button id="deleteExpConfirmCancel">Отмена</button>
+      <button id="deleteExpConfirmOk" class="danger">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<div id="deleteExpConfirmModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Удаление эксперимента</h3>
+    <p id="deleteExpConfirmText">Вы уверены, что хотите удалить этот эксперимент?</p>
+    <div class="actions">
+      <button id="deleteExpConfirmCancel">Отмена</button>
+      <button id="deleteExpConfirmOk" class="danger">Удалить</button>
+    </div>
+  </div>
+</div>
+
+Модаль результата удаления эксперимента --
+<div id="deleteExpResultModal" class="modal-backdrop">
+  <div class="modal">
+    <h3 id="deleteExpResultTitle">Результат</h3>
+    <p id="deleteExpResultText"></p>
+    <div class="actions">
+      <button id="deleteExpResultOk">OK</button>
+    </div>
+  </div>
+</div> -->
+
+<!-- Модаль редактирования батареи -->
+<div id="editBatteryModal" class="modal-backdrop">
+  <div class="modal edit-modal" style="width: 500px;">
+    <h3>Редактировать батарею</h3>
+    <div class="row">
+      <label for="editBatteryName">Name</label>
+      <input id="editBatteryName" type="text">
+    </div>
+    <div class="row">
+      <label for="editBatteryChemistry">Chemistry</label>
+      <input id="editBatteryChemistry" type="text">
+    </div>
+    <div class="row">
+      <label for="editBatteryCapacity">Capacity (mAh)</label>
+      <input id="editBatteryCapacity" type="number" min="0" step="1">
+    </div>
+    <div class="row">
+      <label for="editBatteryVoltage1">Voltage Min (V)</label>
+      <input id="editBatteryVoltage1" type="number" min="0" step="0.1">
+    </div>
+    <div class="row">
+      <label for="editBatteryVoltage2">Voltage Max (V)</label>
+      <input id="editBatteryVoltage2" type="number" min="0" step="0.1">
+    </div>
+    <div class="row">
+      <label for="editBatteryNotes">Notes</label>
+      <textarea id="editBatteryNotes"></textarea>
+    </div>
+    <div class="actions">
+      <button id="editBatteryDelete" class="delete-btn">Удалить</button>
+      <div>
+        <button id="editBatteryCancel">Отмена</button>
+        <button id="editBatterySave" class="save-btn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модаль редактирования эксперимента -->
+<div id="editExperimentModal" class="modal-backdrop">
+  <div class="modal edit-modal" style="width: 500px;">
+    <h3>Редактировать эксперимент</h3>
+    <div class="row">
+      <label for="editExperimentFormat">Format</label>
+      <input id="editExperimentFormat" type="text">
+    </div>
+    <div class="row">
+      <label for="editExperimentDate">Date</label>
+      <input id="editExperimentDate" type="date">
+    </div>
+    <div class="row">
+      <label for="editExperimentDuration">Duration (s)</label>
+      <input id="editExperimentDuration" type="number" min="0" step="0.001">
+    </div>
+    <div class="row">
+      <label for="editExperimentNotes">Notes</label>
+      <textarea id="editExperimentNotes"></textarea>
+    </div>
+    <div class="actions">
+      <button id="editExperimentDelete" class="delete-btn">Удалить</button>
+      <div>
+        <button id="editExperimentCancel">Отмена</button>
+        <button id="editExperimentSave" class="save-btn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модаль подтверждения удаления -->
+<div id="deleteConfirmModal" class="modal-backdrop">
+  <div class="modal">
+    <h3 id="deleteConfirmTitle">Подтверждение удаления</h3>
+    <p id="deleteConfirmText">Вы уверены, что хотите удалить эту запись?</p>
+    <div class="actions">
+      <button id="deleteConfirmCancel">Отмена</button>
+      <button id="deleteConfirmOk" class="delete-btn">Удалить</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+<!-----------Фильтр-----------------------------------> 
+
+<div id="filterModal" class="modal-backdrop">
+  <div class="modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+    <h3>Фильтр батарей</h3>
+    
+    <div class="filter-section">
+      <h4>Name</h4>
+      <input type="text" id="filterName" placeholder="Введите название батареи">
+    </div>
+    
+    <div class="filter-section">
+      <h4>Chemistry</h4>
+      <select id="filterChemistry">
+        <option value="">Все химии</option>
+      </select>
+    </div>
+    
+    <div class="filter-section">
+      <h4>Capacity (mAh)</h4>
+      <div class="range-inputs">
+        <input type="number" id="filterCapacityMin" placeholder="Мин" min="0">
+        <span>—</span>
+        <input type="number" id="filterCapacityMax" placeholder="Макс" min="0">
+      </div>
+    </div>
+    
+    <div class="filter-section">
+      <h4>Voltage (V)</h4>
+      <div class="range-inputs">
+        <input type="number" id="filterVoltageMin" placeholder="Мин" min="0" step="0.1">
+        <span>—</span>
+        <input type="number" id="filterVoltageMax" placeholder="Макс" min="0" step="0.1">
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button id="filterReset">Сбросить</button>
+      <button id="filterCancel">Отмена</button>
+      <button id="filterApply" style="background: #007bff; color: white;">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!----------------------------------------------------------> 
+
+<script src="/static/main.js"></script>
+</body>
+</html>

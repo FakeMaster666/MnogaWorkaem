@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+psycopg2-binary
+pandas
+python-multipart
+
+# пиши 'pip install -r requirements.txt' и все отсюда скачается(мб комментарий надо и удалить)
