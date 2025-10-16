@@ -3,5 +3,6 @@ uvicorn
 psycopg2-binary
 pandas
 python-multipart
-
+openpyxl
+xlrd
 # пиши 'pip install -r requirements.txt' и все отсюда скачается(мб комментарий надо и удалить)

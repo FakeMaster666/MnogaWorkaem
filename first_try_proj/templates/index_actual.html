@@ -341,8 +341,60 @@
   </div>
 </div>
 
-<!----------------------------------------------------------> 
+<!-----------------------------авторизация -----------------------------> 
 
+<!-- Модальное окно авторизации -->
+<div id="authModal" class="modal-backdrop">
+  <div class="modal auth-modal">
+    <h3>Авторизация</h3>
+    
+    <!-- Форма логина -->
+    <div id="loginForm" class="auth-form">
+      <div class="row">
+        <label for="authLogin">Логин</label>
+        <input id="authLogin" type="text" placeholder="Введите логин" minlength="3">
+      </div>
+      <div class="row">
+        <label for="authPassword">Пароль</label>
+        <input id="authPassword" type="password" placeholder="Введите пароль" minlength="4">
+      </div>
+      
+      <div id="authMessage" class="auth-message"></div>
+      
+      <div class="auth-actions">
+        <button id="loginBtn" class="auth-btn primary" disabled>Войти</button>
+        <div class="auth-switch">
+          <span>Нет аккаунта? </span>
+          <button id="showRegister">Зарегистрироваться</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Форма регистрации -->
+    <div id="registerForm" class="auth-form hidden">
+      <div class="row">
+        <label for="regLogin">Логин</label>
+        <input id="regLogin" type="text" placeholder="Придумайте логин" minlength="3">
+      </div>
+      <div class="row">
+        <label for="regPassword">Пароль</label>
+        <input id="regPassword" type="password" placeholder="Придумайте пароль" minlength="4">
+      </div>
+      
+      <div id="authMessage" class="auth-message"></div>
+      
+      <div class="auth-actions">
+        <button id="registerBtn" class="auth-btn primary" disabled>Зарегистрироваться</button>
+        <div class="auth-switch">
+          <span>Уже есть аккаунт? </span>
+          <button id="showLogin">Войти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-----------------------------------------------------------------------> 
 <script src="/static/main.js"></script>
 </body>
 </html>

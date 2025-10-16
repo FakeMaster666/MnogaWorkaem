@@ -19,14 +19,17 @@ from psycopg2.pool import SimpleConnectionPool
 import psycopg2.extras
 import pandas as pd
 
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+import hashlib
 
 # =========================
 # Config (ENV)
 # =========================
 DB_HOST = os.getenv("PGHOST", "localhost")
-DB_PORT = int(os.getenv("PGPORT", "5432"))
+DB_PORT = int(os.getenv("PGPORT", "8001"))
 DB_USER = os.getenv("PGUSER", "postgres")
-DB_PASSWORD = os.getenv("PGPASSWORD", "12345678")
+DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
 # DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
 DB_NAME = os.getenv("PGDATABASE", "postgres")
 
@@ -357,6 +360,7 @@ def api_columns(exp_id: int) -> Dict[str, List[str]]:
     Возвращает названия столбцов файла эксперимента.
     """
     conn = None
+    
     try:
         conn = get_conn()
         with conn.cursor() as cur:
@@ -364,7 +368,7 @@ def api_columns(exp_id: int) -> Dict[str, List[str]]:
             row = cur.fetchone()
         if not row:
             raise HTTPException(404, "Experiment not found")
-        path = row["table_path"]       
+        path = row["table_path"]      
         df = _read_table(path)
         return {"columns": [str(c) for c in df.columns]}
     except HTTPException:
@@ -873,9 +877,112 @@ def api_delete_experiment(experiment_id: int):
     finally:
         if conn: 
             put_conn(conn)
+#================================= авторизация 
 
+def hash_password(password: str) -> str:
+    """Хеширование пароля"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
+@app.get("/auth")
+def auth_page():
+    """Страница авторизации"""
+    index_path = os.path.join(TEMPLATES_DIR, "index_actual.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return HTMLResponse("<h2>Put index.html to ./static/index.html</h2>", status_code=200)
 
+@app.post("/api/login")
+def api_login(request: Request, payload: Dict):
+    """
+    Авторизация пользователя
+    """
+    login = payload.get("login", "").strip()
+    password = payload.get("password", "").strip()
+    
+    if not login or not password:
+        raise HTTPException(400, "Login and password are required")
+    
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, login, password FROM users WHERE login = %s", 
+                (login,)
+            )
+            user = cur.fetchone()
+        
+        if not user:
+            raise HTTPException(401, "Invalid login or password")
+        
+        hashed_password = hash_password(password)
+        if user["password"] != hashed_password:
+            raise HTTPException(401, "Invalid login or password")
+        
+        # Здесь можно добавить сессию или JWT токен
+        return {"success": True, "message": "Login successful", "user_id": user["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn:
+            put_conn(conn)
+
+@app.post("/api/register")
+def api_register(payload: Dict):
+    """
+    Регистрация нового пользователя
+    """
+    login = payload.get("login", "").strip()
+    password = payload.get("password", "").strip()
+    
+    if not login or not password:
+        raise HTTPException(400, "Login and password are required")
+    
+    if len(login) < 3:
+        raise HTTPException(400, "Login must be at least 3 characters")
+    
+    if len(password) < 4:
+        raise HTTPException(400, "Password must be at least 4 characters")
+    
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            # Проверяем, существует ли пользователь
+            cur.execute("SELECT id FROM users WHERE login = %s", (login,))
+            if cur.fetchone():
+                raise HTTPException(400, "User already exists")
+            
+            # Создаем нового пользователя
+            hashed_password = hash_password(password)
+            cur.execute(
+                "INSERT INTO users (login, password) VALUES (%s, %s) RETURNING id",
+                (login, hashed_password)
+            )
+            user_id = cur.fetchone()["id"]
+        
+        conn.commit()
+        return {"success": True, "message": "Registration successful", "user_id": user_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn: 
+            conn.rollback()
+        raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        if conn:
+            put_conn(conn)
+
+@app.get("/api/check-auth")
+def api_check_auth():
+    """
+    Проверка авторизации (заглушка - в реальном приложении проверяйте сессию/JWT)
+    """
+    return {"authenticated": False, "user_id": None}
 
 
 
@@ -885,4 +992,4 @@ def api_delete_experiment(experiment_id: int):
 if __name__ == "__main__":
     # локальный запуск без uvicorn (для отладки) — не обязателен
     import uvicorn
-    uvicorn.run("server:app", host="127.0.0.1", port=5432, reload=True)
+    uvicorn.run("server:app", host="127.0.0.1", port=8001, reload=True)

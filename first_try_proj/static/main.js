@@ -1086,7 +1086,166 @@ function updateFilterButton() {
 updateFilterButton();
 
 
-//////////////////////////////////////////////////
+//////////////////////////////////////////////////  авторизация 
+
+// Добавляем в начало файла
+const authModal = document.getElementById('authModal');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const authLogin = document.getElementById('authLogin');
+const authPassword = document.getElementById('authPassword');
+const regLogin = document.getElementById('regLogin');
+const regPassword = document.getElementById('regPassword');
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
+const showRegisterBtn = document.getElementById('showRegister');
+const showLoginBtn = document.getElementById('showLogin');
+const authMessage = document.getElementById('authMessage');
+
+// Состояние авторизации
+let isAuthenticated = false;
+
+// Показываем модальное окно авторизации при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    openModal(authModal);
+    checkAuth();
+});
+
+// Проверка авторизации
+async function checkAuth() {
+    try {
+        const response = await fetch('/api/check-auth');
+        const data = await response.json();
+        if (data.authenticated) {
+            isAuthenticated = true;
+            closeModal(authModal);
+            loadBatteries();
+        }
+    } catch (error) {
+        console.log('Not authenticated');
+    }
+}
+
+// Валидация полей ввода
+function validateAuthFields(login, password) {
+    return login.length >= 3 && password.length >= 4;
+}
+
+// Обновление состояния кнопок
+function updateAuthButtons() {
+    const login = authLogin.value.trim();
+    const password = authPassword.value.trim();
+    loginBtn.disabled = !validateAuthFields(login, password);
+}
+
+function updateRegButtons() {
+    const login = regLogin.value.trim();
+    const password = regPassword.value.trim();
+    registerBtn.disabled = !validateAuthFields(login, password);
+}
+
+// Обработчики ввода
+authLogin.addEventListener('input', updateAuthButtons);
+authPassword.addEventListener('input', updateAuthButtons);
+regLogin.addEventListener('input', updateRegButtons);
+regPassword.addEventListener('input', updateRegButtons);
+
+// Переключение между формами
+showRegisterBtn.addEventListener('click', () => {
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+    authMessage.textContent = '';
+});
+
+showLoginBtn.addEventListener('click', () => {
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    authMessage.textContent = '';
+});
+
+// Логин
+loginBtn.addEventListener('click', async () => {
+    const login = authLogin.value.trim();
+    const password = authPassword.value.trim();
+
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            isAuthenticated = true;
+            closeModal(authModal);
+            loadBatteries();
+        } else {
+            authMessage.textContent = data.detail || 'Login failed';
+            authMessage.style.color = 'red';
+        }
+    } catch (error) {
+        authMessage.textContent = 'Network error. Please try again.';
+        authMessage.style.color = 'red';
+    }
+});
+
+// Регистрация
+registerBtn.addEventListener('click', async () => {
+    const login = regLogin.value.trim();
+    const password = regPassword.value.trim();
+
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            authMessage.textContent = 'Registration successful! Please login.';
+            authMessage.style.color = 'green';
+            // Переключаем обратно на форму логина
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            // Заполняем поля логина
+            authLogin.value = login;
+            authPassword.value = '';
+            updateAuthButtons();
+        } else {
+            authMessage.textContent = data.detail || 'Registration failed';
+            authMessage.style.color = 'red';
+        }
+    } catch (error) {
+        authMessage.textContent = 'Network error. Please try again.';
+        authMessage.style.color = 'red';
+    }
+});
+
+// Блокируем основные функции если не авторизован
+function checkAuthBeforeAction() {
+    if (!isAuthenticated) {
+        alert('Please login first');
+        openModal(authModal);
+        return false;
+    }
+    return true;
+}
+
+// Обновляем основные обработчики чтобы проверять авторизацию
+// Например, для загрузки батарей:
+const originalLoadBatteries = loadBatteries;
+loadBatteries = function() {
+    if (!isAuthenticated) return;
+    originalLoadBatteries();
+};
+
+// Аналогично для других функций...
+
+
 
 // --- init
 loadBatteries();
