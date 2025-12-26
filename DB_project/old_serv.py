@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File
@@ -26,11 +26,15 @@ import hashlib
 # =========================
 DB_HOST = os.getenv("PGHOST", "localhost")
 DB_PORT = int(os.getenv("PGPORT", "5432"))
-DB_USER = os.getenv("PGUSER", "roman666")
-#DB_USER = os.getenv("PGUSER", "postgres")
-DB_PASSWORD = os.getenv("PGPASSWORD", "12345")
-# DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
-DB_NAME = os.getenv("PGDATABASE", "postgres")
+
+DB_USER = os.getenv("PGUSER", "postgres")
+DB_PASSWORD = os.getenv("PGPASSWORD", "12345678")
+DB_NAME = os.getenv("PGDATABASE", "batteries_v2")
+
+
+# DB_USER = os.getenv("PGUSER", "roman666")
+# DB_PASSWORD = os.getenv("PGPASSWORD", "12345")
+# DB_NAME = os.getenv("PGDATABASE", "postgres")
 
 
 # Ограничения/настройки
@@ -72,6 +76,7 @@ def _pool_close() -> None:
         _pool = None
 
 def get_conn():
+    # print(222)
     """Взять соединение из пула. Не забывай закрывать (conn.close()), чтобы вернуть в пул."""
     if _pool is None:
         _pool_init()
@@ -90,6 +95,7 @@ async def lifespan(app: FastAPI):
     _pool_close()
 
 app = FastAPI(title="Battery Experiments (psycopg2)", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # CORS (на всякий случай, чтобы HTML с того ж]е сервера/доменов всё видел)
 app.add_middleware(
@@ -102,7 +108,7 @@ app.add_middleware(
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    index_path = os.path.join(TEMPLATES_DIR, "index_actual.html")
+    index_path = os.path.join(TEMPLATES_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return HTMLResponse("<h2>Put index.html to ./static/index.html</h2>", status_code=200)
@@ -135,122 +141,6 @@ def api_cell_types() -> List[Dict]:
             put_conn(conn)
 
 
-
-@app.get("/api/tables/batteries")
-def get_data_type(table_name: str , column: str) -> str:
-    """
-    Функция, которая возвращает тип данных колонки
-    """
-    conn = None
-    try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT data_type
-                FROM information_schema.columns 
-                WHERE table_name = %s and column_name = %s
-                ORDER BY ordinal_position;
-            """, (table_name, column))
-            data_type = cur.fetchall() 
-
-        return data_type[0]
-    
-    except Exception as e:
-        raise HTTPException(500, detail=f"Failed to get column names: {e}")
-    finally:
-        if conn:
-            put_conn(conn)
-    
-
-def convert_value_for_column(value: Any, column: str, column_type: str) -> Any:
-    """Преобразовать значение к типу колонки PostgreSQL"""
-    if value is None:
-        return None
-    
-    try:
-        if column_type in {'smallint', 'integer', 'bigint', 'serial', 'bigserial'}:
-            return int(value)
-        
-        elif column_type in {'decimal', 'numeric', 'real', 'double precision', 'float'}:
-            return float(value)
-        
-        elif column_type == 'boolean':
-            if isinstance(value, str):
-                return value.lower() in ('true', 't', 'yes', 'y', '1')
-            return bool(value)
-        
-        elif column_type in {'date'}:
-            if isinstance(value, str):
-                return value  # PostgreSQL сам преобразует строку в date
-            elif isinstance(value, datetime.date):
-                return value.isoformat()
-        
-        elif column_type in {'timestamp', 'timestamp with time zone', 
-                           'timestamp without time zone'}:
-            if isinstance(value, str):
-                return value
-            elif isinstance(value, datetime.datetime):
-                return value.isoformat()
-        
-        else:
-            return str(value)
-            
-    except (ValueError, TypeError) as e:
-        raise HTTPException(
-            400,
-            detail=f"Cannot convert value '{value}' to type {column_type} "
-                  f"for column '{column}': {e}"
-        )
-
-
-
-@app.get("/api/tables/batteries")
-def api_batteries(
-    limit: int = Query(20, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    sort: str = Query(None),
-    order: str = Query("asc"),
-    columns: Optional[List[str]] = Query(None),
-    filter: Optional[Dict] = Query(None)
-) -> List[Dict]:
-    """
-    Возвращает список батарей.
-    columns: список колонок для выборки.
-    sort:  параметр сортировки
-    order: порядок сортировки
-
-    """
-    default_cols = ["id", "cell_name", "batch", "manufacturer", "chemistry_family", "capacity_nom", "voltage_nom"]
-    selected_cols = columns if columns else default_cols
-    
-    sort_field = sort if sort in selected_cols else "id"
-    order_dir = order if order in ["asc", "desc"] else "asc"
-    
-    sql = f"""
-        SELECT {', '.join(selected_cols)}
-        FROM batteries
-        ORDER BY {sort_field} {order_dir}
-        LIMIT %s OFFSET %s
-    """
-
-    conn = None
-    try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute(sql, (limit, offset))
-            rows = cur.fetchall()
-        return rows
-        
-    except Exception as e:
-        raise HTTPException(500, detail=f"Database error: {e}")
-    finally:
-        if conn:
-            put_conn(conn)
-
-
-
-
-
 @app.get("/api/tables/batteries")
 def api_batteries(
     limit: int = Query(20, ge=1, le=200),
@@ -258,8 +148,7 @@ def api_batteries(
     sort: str = Query(None),
     order: str = Query("asc"),
     cells_type: Optional[str] = Query(None),
-    columns: Optional[List[str]] = Query(None),
-    filter: Optional[Dict] = Query(None)
+    columns: Optional[List[str]] = Query(None)
 ) -> List[Dict]:
     default_cols = ["id","cell_name","batch","manufacturer",
                     "chemistry_family","capacity_nom","voltage_nom"]
@@ -279,35 +168,10 @@ def api_batteries(
 
     if cells_type is not None:
         where_parts.append("cell_type = %s")
-        params.append(cells_type) 
+        params.append(cells_type)
 
+    where_sql = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
-    if filter is not None:
-        for column, value in filter.items():
-            if column not in allowed_cols:
-                continue             
-            if isinstance(value, list) and len(value) == 2:
-                column_type = get_data_type('batteries', column)
-                min_val = convert_value_for_column(value[0], column, column_type)
-                max_val = convert_value_for_column(value[1], column, column_type)
-                
-                if min_val is not None and max_val is not None:
-                    where_parts.append(f"{column} BETWEEN %s AND %s")
-                    params.extend([min_val, max_val])
-                elif min_val is not None:
-                    where_parts.append(f"{column} >= %s")
-                    params.append(min_val)
-                elif max_val is not None:
-                    where_parts.append(f"{column} <= %s")
-                    params.append(max_val)
-            elif isinstance(value, str):
-                where_parts.append(f"{column} = %s")
-                params.append(value)
-            
-    where_sql = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""                     
-    
-    
-    
     sql = f"""
         SELECT {', '.join(selected_cols)}
         FROM batteries
@@ -331,10 +195,6 @@ def api_batteries(
             put_conn(conn)
 
 
-
-
-
-
 @app.get("/api/health")
 def health():
     conn = None
@@ -346,30 +206,6 @@ def health():
         return {"ok": True, "db": one[0] == 1}
     except Exception as e:
         raise HTTPException(500, detail=f"{type(e).__name__}: {e}")
-    finally:
-        if conn:
-            put_conn(conn)
-
-@app.get("/api/tables/{table_name}")
-def get_column_names(table_name: str) -> List[str]:
-    """
-    Функция для получения названий колонок таблицы table_name
-    """
-    conn = None
-    try:
-        conn = get_conn()
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT column_name
-                FROM information_schema.columns 
-                WHERE table_name = %s
-                ORDER BY ordinal_position;
-            """, (table_name,))
-            columns = cur.fetchall()
-            return [col["column_name"] for col in columns]
-            
-    except Exception as e:
-        raise HTTPException(500, detail=f"Failed to get column names: {e}")
     finally:
         if conn:
             put_conn(conn)
@@ -455,6 +291,30 @@ def api_create_battery(payload: Dict ):
             list(data.values())
         )
         conn.commit()
+
+@app.get("/api/tables/{table_name}")
+def get_column_names(table_name: str) -> List[str]:
+    """
+    Функция для получения названий колонок таблицы table_name
+    """
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT column_name
+                FROM information_schema.columns 
+                WHERE table_name = %s
+                ORDER BY ordinal_position;
+            """, (table_name,))
+            columns = cur.fetchall()
+            return [col["column_name"] for col in columns]
+            
+    except Exception as e:
+        raise HTTPException(500, detail=f"Failed to get column names: {e}")
+    finally:
+        if conn:
+            put_conn(conn)
 
 @app.patch("/api/tables/batteries/{battery_id}")
 def api_change_battery(payload: Dict , battery_id: str):
