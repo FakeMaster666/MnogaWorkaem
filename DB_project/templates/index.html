@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+    <head>
+        <meta charset="UTF-8">
+        <title>Batteries & Experiments</title>
+        <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+    
+    <body>
+        <h1>Battery Experiments Viewer</h1>
+        
+        <button id="backToTypes" type="button" style="display:none;">← Назад к типам</button>
+        <button id="colsToggle" type="button">Колонки</button>
+        <span id="colsSummary"></span>
+
+        <div id="colsPanel" style="display:none; border:1px solid #ccc; padding:10px; margin:10px 0;">
+            <div><b>Выберите колонки, дополнительные к:</b> id, cell_name, batch, manufacturer, chemistry_family, capacity_nom, voltage_nom</div>
+            <div id="colsGroups" style="margin-top:8px;"></div>
+
+            <div style="margin-top:10px;">
+                <button id="colsApply" type="button">Применить</button>
+                <button id="colsReset" type="button">Сброс</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="batteriesTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="batteriesStatus"></div>
+
+        <select id="batteriesLimit">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+        </select>
+
+        <button id="batteriesPrev">←</button>
+        <button id="batteriesNext">→</button>
+
+
+
+        <script src="/static/main.js"></script>
+    </body>
+</html>

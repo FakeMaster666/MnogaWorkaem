@@ -1,0 +1,68 @@
+/* Базово, чтобы не было странных отступов у страницы */
+body {
+  margin: 16px;
+  font-family: Arial, sans-serif;
+}
+
+/* Контейнер со скроллом, если таблица большая */
+.table-wrap {
+  width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+/* Сама таблица */
+#batteriesTable {
+  border-collapse: collapse;  /* объединяем границы */
+  width: 100%;               /* занимает ширину контейнера */
+  min-width: 900px;          /* чтобы не сжималась слишком сильно */
+}
+
+/* Ячейки: границы и внутренние отступы */
+#batteriesTable th,
+#batteriesTable td {
+  border: 1px solid #acacac;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;       /* чтобы значения не ломались по строкам */
+}
+
+/* Заголовок немного выделим */
+#batteriesTable thead th {
+  position: sticky;
+  top: 0;
+  background: #cacaca;
+  z-index: 1;
+}
+
+/* Не обязательно, но удобно: строка при наведении */
+#batteriesTable tbody tr:hover {
+  background: #cacaca;
+}
+
+/* чтобы заголовки выглядели кликабельными */
+#batteriesTable thead th {
+  cursor: pointer;
+}
+
+/* внутренний контейнер заголовка: текст слева, слот справа */
+#batteriesTable thead th .th-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* слот под стрелку: фиксированная ширина, чтобы не прыгало */
+#batteriesTable thead th .th-sort {
+  display: inline-block;
+  width: 18px;          /* место под ▲/▼ */
+  text-align: center;
+  flex: 0 0 18px;
+}
+
+/* необязательно, но удобно: подсветка активной сортировки */
+#batteriesTable thead th.is-sorted {
+  background: #f0f0f0;
+}

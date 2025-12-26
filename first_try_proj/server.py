@@ -26,11 +26,18 @@ import hashlib
 # =========================
 # Config (ENV)
 # =========================
+# DB_HOST = os.getenv("PGHOST", "localhost")
+# DB_PORT = int(os.getenv("PGPORT", "5432"))
+# # DB_PORT = int(os.getenv("PGPORT", "8001"))
+# DB_USER = os.getenv("PGUSER", "postgres")
+# DB_PASSWORD = os.getenv("PGPASSWORD", "12345678")
+# # DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
+# DB_NAME = os.getenv("PGDATABASE", "postgres")
+
 DB_HOST = os.getenv("PGHOST", "localhost")
-DB_PORT = int(os.getenv("PGPORT", "8001"))
+DB_PORT = int(os.getenv("PGPORT", "5432"))
 DB_USER = os.getenv("PGUSER", "postgres")
-DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
-# DB_PASSWORD = os.getenv("PGPASSWORD", "1234")
+DB_PASSWORD = os.getenv("PGPASSWORD", "12345678")
 DB_NAME = os.getenv("PGDATABASE", "postgres")
 
 # Ограничения/настройки
