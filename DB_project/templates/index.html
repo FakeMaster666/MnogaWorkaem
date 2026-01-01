@@ -4,14 +4,14 @@
     <head>
         <meta charset="UTF-8">
         <title>Batteries & Experiments</title>
-        <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
         <link rel="stylesheet" href="/static/style.css">
     </head>
     
     <body>
         <h1>Battery Experiments Viewer</h1>
         
-        <button id="backToTypes" type="button" style="display:none;">← Назад к типам</button>
+        <button id="backToTypes" type="button" style="display:none;">← Назад</button>
+        <button id="showAllBatteriesBtn" type="button">Показать все батареи</button>
         <button id="colsToggle" type="button">Колонки</button>
         <span id="colsSummary"></span>
 
@@ -43,6 +43,19 @@
         <button id="batteriesPrev">←</button>
         <button id="batteriesNext">→</button>
 
+        <!-- <div id="choiceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35);"> -->
+        <div id="choiceModal">
+            <div style="background:#fff; width:min(420px, 92vw); margin:12vh auto; padding:16px; border-radius:10px;">
+                <div style="font-weight:600; margin-bottom:8px;">Выбор действия</div>
+                <div id="choiceModalText" style="margin-bottom:12px;"></div>
+
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button id="choiceOpenBatches" type="button">Открыть партии</button>
+                <button id="choiceOpenBatteries" type="button">Открыть батарейки</button>
+                <button id="choiceCancel" type="button">Отмена</button>
+                </div>
+            </div>
+        </div>
 
 
         <script src="/static/main.js"></script>

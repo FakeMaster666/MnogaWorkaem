@@ -36,9 +36,17 @@ body {
   z-index: 1;
 }
 
+#choiceModal {
+    display: none; 
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 2; 
+}
+
 /* Не обязательно, но удобно: строка при наведении */
 #batteriesTable tbody tr:hover {
-  background: #cacaca;
+  background: #d4d4d4;
 }
 
 /* чтобы заголовки выглядели кликабельными */

@@ -4,8 +4,26 @@ const batteriesState = {
   sort: "id",
   order: "asc",
   columns: null,
-  cells_type: null, 
+
+  cells_type: null,          // фильтр для /api/tables/batteries
+
+  selectedCellType: null,    // какой cell_type сейчас выбран (для batches/назад)
+  batch: null,               // фильтр batch для /api/tables/batteries
+  backTarget: "types" ,       // откуда пришли: "types" или "batches"
+
+   // какой экран сейчас рисуем
+  view: "types", // "types" | "batches" | "batteries" | "exp_types" | "experiments"
+
+  // сортировки по экранам
+  sortByView: {
+    types:       { col: "cell_type",       order: "asc"  }, // типы батарей
+    batches:     { col: "batch",           order: "asc"  }, // партии
+    batteries:   { col: "id",              order: "asc"  }, // батареи (все/по типу/по партии)
+    exp_types:   { col: "count",           order: "desc" }, // сводка типов экспериментов
+    experiments: { col: "e.id",            order: "asc"  }  // список экспериментов
+  }
 };
+
 
 
 const CORE_COLS = [
@@ -109,12 +127,49 @@ const COL_GROUPS = [
 
 const selectedGroups = new Set();
 
-async function fetchCellTypes() {
-    const resp = await fetch("/api/batteries/cell_types");
+function getActiveSort() {
+  const s = batteriesState.sortByView[batteriesState.view];
+  return s || { col: "id", order: "asc" };
+}
+
+function setActiveSort(col, order) {
+  if (!batteriesState.sortByView[batteriesState.view]) {
+    batteriesState.sortByView[batteriesState.view] = { col, order };
+  } else {
+    batteriesState.sortByView[batteriesState.view].col = col;
+    batteriesState.sortByView[batteriesState.view].order = order;
+  }
+}
+
+async function fetchCellTypes({
+    sort = null,
+    order = "asc",
+} = {}) {
+    const params = new URLSearchParams();
+    params.set("order", order);
+    if (sort) params.set("sort", sort);
+    
+    const resp = await fetch(`/api/batteries/cells_type?${params.toString()}`);
+    // const resp = await fetch(`/api/tables/batteries?${params.toString()}`);
+
     if (!resp.ok) throw new Error(`API error: ${resp.status}`);
     return await resp.json(); // [{cell_type: "...", cnt: 12}, ...]
 }
 
+async function fetchBatches({
+    cellType = null,
+    sort = null,
+    order = "asc",
+} = {}) {
+    const params = new URLSearchParams({cells_type: cellType });
+    params.set("order", order);
+    if (sort) params.set("sort", sort);
+
+    //   const params = new URLSearchParams({filter_str: JSON.stringify({cell_type: cellType}) });
+    const resp = await fetch(`/api/batteries/batches?${params.toString()}`);
+    if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+    return await resp.json(); // [{batch, cnt}, ...]
+}
 
 function getSelectedColumns() {
     const cols = new Set(CORE_COLS);
@@ -131,14 +186,32 @@ async function fetchBatteries({
     offset = 0,
     sort = null,
     order = "asc",
-    columns = null
+    columns = null,
+    cells_type = null,
+    batch = null
 } = {}) {
+    const filterObj = {};
+
+    if (cells_type) {filterObj.cell_type = cells_type;}
+    if (batch) {filterObj.batch = batch;}
+
     const params = new URLSearchParams();
     params.set("limit", String(limit));
     params.set("offset", String(offset));
     params.set("order", order);
 
+    
+
     if (sort) params.set("sort", sort);
+    // if (batch) params.set("batch", batch);
+    // if (cells_type) params.set("cells_type", cells_type);
+    // const params = new URLSearchParams({filter_str: JSON.stringify({cell_type: cellType}) });
+    // if (cells_type) params.set("filter_str", JSON.stringify({cell_type: cells_type}))
+    // if (batch) params.set("filter_str", JSON.stringify({batch: batch}))
+
+    if (Object.keys(filterObj).length > 0) params.set("filter_str", JSON.stringify(filterObj));
+
+
     if (columns && Array.isArray(columns)) {
         columns.forEach(c => params.append("columns", c));
     }
@@ -158,21 +231,40 @@ async function fetchBatteries({
     return await resp.json();
 }
 
-function updateSortIndicators(table) {
-    const ths = table.querySelectorAll("thead th");
+// function updateSortIndicators(table) {
+//     const ths = table.querySelectorAll("thead th");
 
-    ths.forEach(th => {
+//     ths.forEach(th => {
+//         const col = th.dataset.col;
+//         const slot = th.querySelector(".th-sort");
+//         th.classList.remove("is-sorted");
+
+//         if (!slot) return;
+
+//         // if (col === batteriesState.sort) { // sort change
+//         if (col == getActiveSort().col){
+//         th.classList.add("is-sorted");
+//         // slot.textContent = (batteriesState.order === "asc") ? "▲" : "▼"; // sort change
+//         slot.textContent = (getActiveSort().order === "asc") ? "▲" : "▼";
+//         } else {
+//         slot.textContent = ""; // место есть, значка нет
+//         }
+//     });
+// }
+
+function updateSortIndicators(table) {
+    const s = getActiveSort(); // <- важно
+    table.querySelectorAll("thead th").forEach(th => {
         const col = th.dataset.col;
         const slot = th.querySelector(".th-sort");
         th.classList.remove("is-sorted");
-
         if (!slot) return;
 
-        if (col === batteriesState.sort) {
+        if (col === s.col) {
         th.classList.add("is-sorted");
-        slot.textContent = (batteriesState.order === "asc") ? "▲" : "▼";
+        slot.textContent = (s.order === "asc") ? "▲" : "▼";
         } else {
-        slot.textContent = ""; // место есть, значка нет
+        slot.textContent = "";
         }
     });
 }
@@ -258,42 +350,93 @@ function renderTable(table, rows, columns, opts = {}) {
     };
 }
 
-
 function setStatus(text) {
   const el = document.querySelector("#batteriesStatus");
   if (el) el.textContent = text;
 }
 
 async function loadCellTypes() {
-    // const backBtn = document.querySelector("#backToTypes");
-    // if (backBtn) backBtn.style.display = "none"; // отображение кнопки назад
     setModeUI("types");
 
     const table = document.querySelector("#batteriesTable");
     setStatus("Загрузка типов...");
 
-    const rows = await fetchCellTypes(); // [{cell_type, cnt}, ...]
-    renderTable(table, rows, ["cell_type", "cnt"], {
+    const s = getActiveSort(); // { col, order }
+    const rows = await fetchCellTypes({
+        sort: s.col,
+        order: s.order
+    }); // [{cell_type, cnt}, ...]
+
+    renderTable(table, rows, ["cell_type", "count"], {
         rowIdKey: "cell_type",
         emptyText: "Типов нет",
         onRowClick: (row) => {
-        batteriesState.cells_type = row.cell_type;
-        batteriesState.offset = 0;
-        loadBatteries();
-        }
+        // batteriesState.cells_type = row.cell_type;
+        // batteriesState.offset = 0;
+        // loadBatteries();
+        // onRowClick: (row) => {
+        showChoiceModal(row.cell_type);
+        }   
     });
+
+    attachSortHandlers(table, loadCellTypes);
+    updateSortIndicators(table);
 
     setStatus(`Типов: ${rows.length} (кликни по строке)`);
 }
 
+async function loadBatches(cellType) {
+    const table = document.querySelector("#batteriesTable");
+    if (!table) return;
+
+    batteriesState.view = "batches";
+    batteriesState.selectedCellType = cellType;
+    setModeUI("batches");
+
+    setStatus(`Загрузка партий для типа: ${cellType}...`);
+    try {
+        const s = getActiveSort() 
+
+        const rows = await fetchBatches({
+            cellType: cellType,
+            sort: s.col,
+            order: s.order
+        });
+
+        renderTable(table, rows, ["batch", "count"], {
+        rowIdKey: "batch",
+        emptyText: "Нет партий",
+        onRowClick: (row) => {
+            batteriesState.cells_type = cellType; // твой параметр для /api/tables/batteries
+            batteriesState.batch = row.batch;
+            batteriesState.offset = 0;
+            batteriesState.view = "batteries";
+            batteriesState.backTarget = "batches";
+            loadBatteries();
+        }
+        });
+
+        // attachSortHandlers(table, loadBatches);
+        attachSortHandlers(table, () => loadBatches(batteriesState.selectedCellType));
+        updateSortIndicators(table)
+
+        setStatus(`Партий: ${rows.length} (тип: ${cellType})`);
+    } catch (e) {
+        setStatus(`Ошибка: ${e.message}`);
+        renderTable(table, [], ["batch", "count"], { emptyText: "Ошибка загрузки" });
+    }
+}
 
 async function loadBatteries() {
-
-    // const backBtn = document.querySelector("#backToTypes");
-    // if (backBtn) backBtn.style.display = "inline-block"; // отображение кнопки назад
     setModeUI("batteries");
     const table = document.querySelector("#batteriesTable");
     if (!table) return;
+
+    // cellType = (cellType ?? batteriesState.selectedCellType);
+    // if (cellType == null) return;
+
+    // batteriesState.view = "batches";
+    // batteriesState.selectedCellType = cellType;
 
     const cols = batteriesState.columns && batteriesState.columns.length
     ? batteriesState.columns
@@ -301,18 +444,28 @@ async function loadBatteries() {
 
     setStatus("Загрузка...");
     try {
-        const rows = await fetchBatteries({ ...batteriesState, columns: cols });
+        const s = getActiveSort(); // { col, order }
+        const rows = await fetchBatteries({
+            limit: batteriesState.limit,
+            offset: batteriesState.offset,
+            sort: s.col,
+            order: s.order,
+            columns: cols,
+            cells_type: batteriesState.cells_type,
+            batch: batteriesState.batch
+        });
+
+
+        // const rows = await fetchBatteries({ ...batteriesState, columns: cols }); // sort change
 
         renderTable(table, rows, cols, {
             rowIdKey: "id",
             emptyText: "Нет батареек",
-            onRowClick: (row) => {
-            console.log("clicked battery row:", row.id);
-            }
+            onRowClick: (row) => {console.log("clicked battery row:", row.id);}
         });
 
         setStatus(`Показано: ${rows.length} (offset=${batteriesState.offset})`);
-        attachSortHandlers(table); // чтобы клики по th работали после перерендера
+        attachSortHandlers(table, loadBatteries); // чтобы клики по th работали после перерендера
         updateSortIndicators(table);
     } catch (e) {
         setStatus(`Ошибка: ${e.message}`);
@@ -352,21 +505,67 @@ function buildGroupsUI() {
     updateColsSummary();
 }
 
-function attachSortHandlers(table) {
+function showChoiceModal(cellType) {
+    const modal = document.querySelector("#choiceModal");
+    const text = document.querySelector("#choiceModalText");
+    const btnBatches = document.querySelector("#choiceOpenBatches");
+    const btnBatteries = document.querySelector("#choiceOpenBatteries");
+    const btnCancel = document.querySelector("#choiceCancel");
+
+    if (!modal || !text || !btnBatches || !btnBatteries || !btnCancel) return;
+
+    modal.dataset.cellType = cellType;
+    text.textContent = `Тип: ${cellType}. Что открыть?`;
+    modal.style.display = "block";
+
+    btnCancel.onclick = () => { modal.style.display = "none"; };
+
+    btnBatches.onclick = () => {
+        modal.style.display = "none";
+        batteriesState.offset = 0;
+        batteriesState.backTarget = "types";
+        loadBatches(cellType);
+    };
+
+    btnBatteries.onclick = () => {
+        modal.style.display = "none";
+        batteriesState.cells_type = cellType;
+        batteriesState.batch = null;
+        batteriesState.offset = 0;
+        batteriesState.view = "batteries";
+        batteriesState.backTarget = "types";
+        loadBatteries();
+    };
+
+    // клик по фону закрывает
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.style.display = "none";
+    };
+}
+
+function attachSortHandlers(table, reloadFn) {
     const ths = table.querySelectorAll("thead th");
     ths.forEach(th => {
         th.onclick = () => {
         const col = th.dataset.col;
         if (!col) return;
 
-        if (batteriesState.sort === col) {
-            batteriesState.order = (batteriesState.order === "asc") ? "desc" : "asc";
+        // if (batteriesState.sort === col) { // sort change
+        if (getActiveSort().col === col) {
+        
+            // batteriesState.order = (batteriesState.order === "asc") ? "desc" : "asc"; // sort change
+            const s = getActiveSort();
+            setActiveSort(s.col, s.order === "asc" ? "desc" : "asc");
+
+
         } else {
-            batteriesState.sort = col;
-            batteriesState.order = "asc";
+            // batteriesState.sort = col; // sort change
+            // batteriesState.order = "asc"; // sort change
+            setActiveSort(col, "asc")
         }
         batteriesState.offset = 0;
-        loadBatteries();
+        // loadBatteries();
+        reloadFn()
         };
     });
 }
@@ -376,16 +575,30 @@ function setModeUI(mode) {
     const colsToggle = document.querySelector("#colsToggle");
     const colsPanel = document.querySelector("#colsPanel");
     const colsSummary = document.querySelector("#colsSummary");
+    const showAllBat = document.querySelector("#showAllBatteriesBtn");
+    
 
     if (mode === "types") {
         if (backBtn) backBtn.style.display = "none";
         if (colsToggle) colsToggle.style.display = "none";
         if (colsSummary) colsSummary.style.display = "none";
         if (colsPanel) colsPanel.style.display = "none";
+        if (showAllBat) showAllBat.style.display = 'inline-block'
+        return;
+    } else if (mode === "batches") {
+        if (backBtn) backBtn.style.display = "inline-block";
+        if (colsToggle) colsToggle.style.display = "none";
+        if (colsSummary) colsSummary.style.display = "none";
+        if (colsPanel) colsPanel.style.display = "none";
+        if (showAllBat) showAllBat.style.display = 'none'
+        return;
     } else if (mode === "batteries") {
         if (backBtn) backBtn.style.display = "inline-block";
         if (colsToggle) colsToggle.style.display = "inline-block";
         if (colsSummary) colsSummary.style.display = "inline-block";
+        if (showAllBat) showAllBat.style.display = 'none'
+
+        return;
     } else {
         return;
     }
@@ -394,17 +607,17 @@ function setModeUI(mode) {
 
 function initBatteriesUI() {
     const prevBtn = document.querySelector("#batteriesPrev");
-    const nextBtn = document.querySelector("#batteriesNext");
-
+    
     if (prevBtn) {
-        prevBtn.onclick = () => {
+      prevBtn.onclick = () => {
         batteriesState.offset = Math.max(0, batteriesState.offset - batteriesState.limit);
         // loadBatteries();
         if (batteriesState.cells_type == null) loadCellTypes();
         else loadBatteries();
-        };
+      };
     }
-
+    
+    const nextBtn = document.querySelector("#batteriesNext");
     if (nextBtn) {
         nextBtn.onclick = () => {
         batteriesState.offset += batteriesState.limit;
@@ -429,12 +642,29 @@ function initBatteriesUI() {
     }
 
     const backBtn = document.querySelector("#backToTypes");
-    if (backBtn) {
     backBtn.onclick = () => {
-        batteriesState.cells_type = null;
         batteriesState.offset = 0;
+
+        if (batteriesState.view === "batteries" && batteriesState.backTarget === "batches") {
+            loadBatches(batteriesState.selectedCellType);
+            return;
+        }
+
+        batteriesState.cells_type = null;
+        batteriesState.batch = null;
+        batteriesState.selectedCellType = null;
+        batteriesState.view = "types";
         loadCellTypes();
     };
+
+    const showAllBat = document.querySelector("#showAllBatteriesBtn");
+    showAllBat.onclick = () => {
+        batteriesState.offset = 0;
+        batteriesState .cell_type = null;
+        batteriesState.batch = null;
+        batteriesState.view = 'batteries';
+        batteriesState.backTarget = 'types'
+        loadBatteries();
     }
 
 

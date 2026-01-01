@@ -76,7 +76,6 @@ def _pool_close() -> None:
         _pool = None
 
 def get_conn():
-    # print(222)
     """Взять соединение из пула. Не забывай закрывать (conn.close()), чтобы вернуть в пул."""
     if _pool is None:
         _pool_init()
@@ -114,13 +113,13 @@ def root():
     return HTMLResponse("<h2>Put index.html to ./static/index.html</h2>", status_code=200)
 
 
-@app.get("/api/batteries/cell_types")
-def api_cell_types() -> List[Dict]:
+@app.get("/api/batteries/cells_type")
+def api_cells_type() -> List[Dict]:
     """
     Возвращает список cell_type (+ количество батареек в каждом типе).
     """
     sql = """
-        SELECT cell_type, COUNT(*) AS cnt
+        SELECT cell_type, COUNT(*) AS count
         FROM batteries
         WHERE cell_type IS NOT NULL AND cell_type <> ''
         GROUP BY cell_type
@@ -141,6 +140,39 @@ def api_cell_types() -> List[Dict]:
             put_conn(conn)
 
 
+@app.get("/api/batteries/batches")
+def api_batches(
+    # cells_type: str = Query(..., description="Filter batches by cell_type")
+    cells_type: Optional[str] = Query(None),
+
+) -> List[Dict]:
+    """
+    Возвращает список партий (batch) для заданного cell_type (+ количество).
+    """
+    sql = """
+      SELECT batch, COUNT(*) AS count
+      FROM batteries
+      WHERE cell_type = %s
+        AND batch IS NOT NULL 
+      GROUP BY batch
+      ORDER BY batch ASC
+    """
+
+
+    conn = None
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute(sql, (cells_type,))
+            rows = cur.fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        raise HTTPException(500, detail=f"Database error: {e}")
+    finally:
+        if conn:
+            put_conn(conn)
+
+
 @app.get("/api/tables/batteries")
 def api_batteries(
     limit: int = Query(20, ge=1, le=200),
@@ -148,6 +180,7 @@ def api_batteries(
     sort: str = Query(None),
     order: str = Query("asc"),
     cells_type: Optional[str] = Query(None),
+    batch: Optional[int] = Query(None),
     columns: Optional[List[str]] = Query(None)
 ) -> List[Dict]:
     default_cols = ["id","cell_name","batch","manufacturer",
@@ -169,6 +202,10 @@ def api_batteries(
     if cells_type is not None:
         where_parts.append("cell_type = %s")
         params.append(cells_type)
+
+    if batch is not None:
+        where_parts.append("batch = %s")
+        params.append(batch)
 
     where_sql = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
 
