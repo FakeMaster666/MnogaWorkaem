@@ -1,0 +1,317 @@
+
+-- CREATE SEQUENCE IF NOT EXISTS batteries_id_seq;
+
+-- CREATE TABLE IF NOT EXISTS public.batteries
+-- (
+--     id integer NOT NULL DEFAULT nextval('batteries_id_seq'::regclass),
+--     batch character varying NOT NULL,
+--     cell_name character varying NOT NULL,
+--     manufacturer character varying NOT NULL,
+--     label character varying,
+--     capacity_nom real,
+--     capacity_max real,
+--     capacity_min real,
+--     voltage_nom real,
+--     voltage_max real,
+--     voltage_min real,
+--     energy real,
+--     recommended_soc_min character varying,
+--     recommended_soc_max character varying,
+--     chemistry_family character varying,
+--     cathode character varying,
+--     cathode_thikness real,
+--     cathode_electrode_material character varying,
+--     cathode_electrode_thikness real,
+--     separator_material character varying,
+--     separator_thikness real,
+--     anode character varying,
+--     anode_thikness real,
+--     anode_electrode_material character varying,
+--     anode_electrode_thikness real,
+--     dcir_1s_ohms_25C_50soc real,
+--     dcir_5s_ohms_25C_50soc real,
+--     dcir_10s_ohms_25C_50soc real,
+--     dcir_10s_ohm_ah real,
+--     dcir_10s_siemens real,
+--     dcir_10s_siemens_wh real,
+--     dcir_30s_ohms_25C_50soc real,
+--     dcir_30s_ohm_ah real,
+--     dcir_30s_siemens real,
+--     dcir_30s_siemens_wh real,
+--     dcir_continuous_ohms_25C_50soc real,
+--     acir_1khz real,
+--     start_of_production date,
+--     dim_w real,
+--     dim_l real,
+--     dim_h real,
+--     volume real,
+--     wall_thikness real,
+--     case_material character varying,
+--     dch_amps_max real,
+--     dch_amps_cont real,
+--     dch_c_rate_max character varying,
+--     dch_c_rate_cont character varying,
+--     dch_w_5s real,
+--     dch_w_10s real,
+--     dch_w_30s real,
+--     dch_w_cont real,
+--     dch_max_temp real,
+--     dch_min_temp real,
+--     ch_amps_max real,
+--     ch_amps_cont real,
+--     ch_c_rate_max real,
+--     ch_c_rate_cont real,
+--     ch_w_5s real,
+--     ch_w_10s real,
+--     ch_w_30s real,
+--     ch_w_cont real,
+--     ch_max_temp real,
+--     ch_min_temp real,
+--     fast_charge_time_10_to_80 real,
+--     self_dch_max_month character varying,
+--     calendar_ageing_soc character varying,
+--     calendar_ageing_temp real,
+--     calendar_ageing_days real,
+--     calendar_ageing_soh real,
+--     cycling_ageing_cycles_to_70soh integer,
+--     cycling_ageing_70_c_rate character varying,
+--     cycling_ageing_cycles_to_80soh integer,
+--     cycling_ageing_80_c_rate character varying,
+--     wh_kg real,
+--     wh_litre real,
+--     w_10s_kg real,
+--     w_cont_kg real,
+--     w_10s_litre real,
+--     applications text,
+--     CONSTRAINT batteries_pkey PRIMARY KEY (id)
+-- )
+-- TABLESPACE pg_default;
+
+-- ALTER TABLE IF EXISTS public.batteries
+-- OWNER TO postgres;
+
+-- ALTER TABLE public.batteries
+-- ADD COLUMN IF NOT EXISTS cell_type real; 
+
+-- CREATE TABLE IF NOT EXISTS public.experiments ( 
+--     id serial PRIMARY KEY,
+--     battery integer NOT NULL,
+--     table_path character varying, 
+--     experiment_type  character varying,
+--     notes text,
+--     CONSTRAINT fk_battery
+--         FOREIGN KEY (battery)
+--         REFERENCES batteries(id)
+--         ON DELETE CASCADE
+-- );
+
+-- CREATE TABLE IF NOT EXISTS public.additional_files ( 
+--     id serial PRIMARY KEY,
+--     battery integer NOT NULL,
+--     file_path character varying, 
+--     filename character varying,
+--     notes text,
+--     CONSTRAINT fk_battery
+--         FOREIGN KEY (battery)
+--         REFERENCES batteries(id)
+--         ON DELETE CASCADE
+-- );
+
+-- -- CREATE TABLE IF NOT EXISTS public.updates ( 
+-- --     id serial PRIMARY KEY,
+-- --     experiment integer NOT NULL,
+-- --     file_path character varying, 
+-- --     filename character varying,
+-- --     notes text,
+-- --     CONSTRAINT fk_batt
+-- --         FOREIGN KEY (battery)
+-- --         REFERENCES batteries(id)
+-- --         ON DELETE CASCADE
+-- -- );
+
+-- BEGIN;
+
+-- CREATE TABLE public.updates (
+--   id          bigserial PRIMARY KEY,
+--   table_name  text NOT NULL,
+--   row_id      integer, -- id записи в целевой таблице
+--   action      text NOT NULL CHECK (action IN ('add', 'delete', 'change')),
+--   user_id     integer NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+--   update_date timestamptz NOT NULL DEFAULT now(),
+--   note        text
+-- );
+
+-- CREATE INDEX updates_table_row_idx ON public.updates (table_name, row_id);
+-- CREATE INDEX updates_user_date_idx ON public.updates (user_id, update_date DESC);
+
+-- COMMIT;
+
+-- BEGIN;
+
+-- ALTER TABLE public.updates
+--   DROP CONSTRAINT IF EXISTS updates_user_id_fkey;
+
+-- DROP TABLE IF EXISTS public.users;
+
+-- CREATE TABLE public.users (
+--   id            bigserial PRIMARY KEY,
+--   login         text NOT NULL UNIQUE CHECK (length(login) >= 3),
+--   password_hash text NOT NULL,
+--   role          text NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin'))
+-- );
+
+-- ALTER TABLE public.updates
+--   ADD CONSTRAINT updates_user_id_fkey
+--   FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+-- COMMIT;
+
+-- один раз включить расширение (нужно для gen_random_uuid)
+-- CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- CREATE TABLE IF NOT EXISTS public.sessions (
+--   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   user_id    bigint NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+--   created_at timestamptz NOT NULL DEFAULT now(),
+--   expires_at timestamptz NOT NULL,
+--   revoked    boolean NOT NULL DEFAULT false
+-- );
+
+-- CREATE INDEX IF NOT EXISTS sessions_user_idx
+--   ON public.sessions(user_id);
+
+-- CREATE INDEX IF NOT EXISTS sessions_active_idx
+--   ON public.sessions(expires_at)
+--   WHERE revoked = false;
+
+-- BEGIN;
+
+-- -- BATTERIES
+-- ALTER TABLE public.batteries
+--   ADD COLUMN IF NOT EXISTS created_by bigint;
+
+-- UPDATE public.batteries
+-- SET created_by = 1
+-- WHERE created_by IS NULL;
+
+-- ALTER TABLE public.batteries
+--   ALTER COLUMN created_by SET DEFAULT 1,
+--   ALTER COLUMN created_by SET NOT NULL;
+
+-- -- FK (если ругнётся "already exists" — скажи, я дам вариант с проверкой)
+-- ALTER TABLE public.batteries
+--   ADD CONSTRAINT batteries_created_by_fkey
+--   FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+-- CREATE INDEX IF NOT EXISTS batteries_created_by_idx
+--   ON public.batteries(created_by);
+
+
+-- -- EXPERIMENTS
+-- ALTER TABLE public.experiments
+--   ADD COLUMN IF NOT EXISTS created_by bigint;
+
+-- UPDATE public.experiments
+-- SET created_by = 1
+-- WHERE created_by IS NULL;
+
+-- ALTER TABLE public.experiments
+--   ALTER COLUMN created_by SET DEFAULT 1,
+--   ALTER COLUMN created_by SET NOT NULL;
+
+-- ALTER TABLE public.experiments
+--   ADD CONSTRAINT experiments_created_by_fkey
+--   FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+-- CREATE INDEX IF NOT EXISTS experiments_created_by_idx
+--   ON public.experiments(created_by);
+
+-- COMMIT;
+
+-- BEGIN;
+
+-- ALTER TABLE public.users
+--   ALTER COLUMN role SET DEFAULT 'creator';
+
+-- -- если раньше были роли viewer/user — мигрируем
+-- UPDATE public.users SET role = 'creator' WHERE role = 'viewer';
+-- UPDATE public.users SET role = 'editor'  WHERE role = 'user';
+
+-- -- если вдруг role NULL
+-- UPDATE public.users SET role = 'creator' WHERE role IS NULL;
+
+-- -- id=1 делаем админом (если есть)
+-- UPDATE public.users SET role = 'admin' WHERE id = 1;
+
+-- DO $$
+-- DECLARE r record;
+-- BEGIN
+--   FOR r IN
+--     SELECT c.conname
+--     FROM pg_constraint c
+--     JOIN pg_class t ON t.oid = c.conrelid
+--     JOIN pg_namespace n ON n.oid = t.relnamespace
+--     WHERE n.nspname = 'public'
+--       AND t.relname = 'users'
+--       AND c.contype = 'c'
+--       AND pg_get_constraintdef(c.oid) ILIKE '%role%'
+--   LOOP
+--     EXECUTE format('ALTER TABLE public.users DROP CONSTRAINT %I', r.conname);
+--   END LOOP;
+-- END$$;
+
+-- ALTER TABLE public.users
+--   ADD CONSTRAINT users_role_check
+--   CHECK (role IN ('creator','editor','admin'));
+
+-- COMMIT;
+
+-- BEGIN;
+
+-- -- 1) убрать старые CHECK на role (если есть)
+-- DO $$
+-- DECLARE r record;
+-- BEGIN
+--   FOR r IN
+--     SELECT c.conname
+--     FROM pg_constraint c
+--     WHERE c.conrelid = 'public.users'::regclass
+--       AND c.contype = 'c'
+--       AND pg_get_constraintdef(c.oid) ILIKE '%role%'
+--   LOOP
+--     EXECUTE format('ALTER TABLE public.users DROP CONSTRAINT %I', r.conname);
+--   END LOOP;
+-- END$$;
+
+-- -- 2) миграция ролей: user->editor, viewer->creator, NULL->creator
+-- UPDATE public.users
+-- SET role = CASE
+--   WHEN role = 'user'   THEN 'editor'
+--   WHEN role = 'viewer' THEN 'creator'
+--   WHEN role IS NULL    THEN 'creator'
+--   ELSE role
+-- END;
+
+-- -- 3) id=1 делаем админом
+-- UPDATE public.users
+-- SET role = 'admin'
+-- WHERE id = 1;
+
+-- -- 4) дефолт + not null
+-- ALTER TABLE public.users
+--   ALTER COLUMN role SET DEFAULT 'creator',
+--   ALTER COLUMN role SET NOT NULL;
+
+-- -- 5) новый CHECK
+-- ALTER TABLE public.users
+--   ADD CONSTRAINT users_role_check
+--   CHECK (role IN ('creator','editor','admin'));
+
+-- COMMIT;
+
+-- SELECT id, login, role FROM public.users ORDER BY id;
+-- Посмотреть текущий FK:
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.experiments'::regclass AND contype='f';
+
