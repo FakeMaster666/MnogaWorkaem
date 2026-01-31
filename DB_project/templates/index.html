@@ -5,6 +5,8 @@
         <meta charset="UTF-8">
         <title>Batteries & Experiments</title>
         <link rel="stylesheet" href="/static/style.css">
+        <!-- <link rel="icon" type="image/x-icon" href="/favicon.ico"> -->
+        <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     </head>
     
     <body>
@@ -43,7 +45,6 @@
         <button id="batteriesPrev">←</button>
         <button id="batteriesNext">→</button>
 
-        <!-- <div id="choiceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35);"> -->
         <div id="choiceModal">
             <div style="background:#fff; width:min(420px, 92vw); margin:12vh auto; padding:16px; border-radius:10px;">
                 <div style="font-weight:600; margin-bottom:8px;">Выбор действия</div>
@@ -56,6 +57,96 @@
                 </div>
             </div>
         </div>
+        <!-- Batch choice modal -->
+        <div id="batchChoiceModal"
+            style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:2;"
+            onclick="closeBatchChoiceModal()">
+            <div style="background:#fff; width:min(420px, 92vw); margin:12vh auto; padding:16px; border-radius:10px;"
+                onclick="event.stopPropagation()">
+                <div style="font-weight:600; margin-bottom:8px;">Выбор действия</div>
+                <div id="batchChoiceModalText" style="margin-bottom:12px;"></div>
+
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button id="batchChoiceOpenBatteries" type="button">Батареи партии</button>
+                <button id="batchChoiceOpenExperiments" type="button">Эксперименты партии</button>
+                <button id="batchChoiceCancel" type="button" onclick="closeBatchChoiceModal()">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="topbar">    
+            <div id="authArea">
+                <button id="authBtn">Войти</button>
+
+                <span id="userBox" class="hidden" style="align-items:center; gap:10px;">
+                    <span id="userLogin"></span>
+                    <button id="logoutBtn">Выйти</button>
+                </span>
+            </div>
+        </div>
+
+
+        <!-- Модалка -->
+        <div id="authModal" class="modal hidden">
+            <div class="modal__backdrop" id="authBackdrop"></div>
+                <div class="modal__panel">
+                    <div class="modal__header">
+                    <div class="modal__tabs">
+                        <button class="tab active" id="tabSignIn">Вход</button>
+                        <button class="tab" id="tabSignUp">Регистрация</button>
+                    </div>
+                    <button class="modal__close" id="authClose">✕</button>
+                </div>
+
+                <div class="modal__body">
+                    <div id="authError" class="error hidden"></div>
+
+                    <!-- Вход -->
+                    <form id="signInForm">
+                        <label>
+                            Логин
+                            <input id="signInLogin" autocomplete="username" required minlength="3">
+                        </label>
+                        <label>
+                            Пароль
+                            <input id="signInPassword" type="password" autocomplete="current-password" required minlength="4">
+                        </label>
+                        <button type="submit">Войти</button>
+                    </form>
+
+                    <!-- Регистрация -->
+                    <form id="signUpForm" class="hidden">
+                        <label>
+                            Логин
+                            <input id="signUpLogin" autocomplete="username" required minlength="3">
+                        </label>
+                        <label>
+                            Пароль
+                            <input id="signUpPassword" type="password" autocomplete="new-password" required minlength="4">
+                        </label>
+                        <button type="submit">Зарегистрироваться</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="editModal" class="modal hidden">
+            <div class="modal__backdrop" id="editModalBackdrop"></div>
+            <div class="modal__panel">
+                <div class="modal__header">
+                    <div id="editModalTitle" class="modal__title">Edit battery</div>
+                    <button id="editModalClose" class="btn">×</button>
+                </div>
+
+                <div id="editModalBody" class="modal__body"></div>
+
+                <div class="modal__footer">
+                    <div id="editModalError" class="modal__error"></div>
+                    <button id="editModalSave" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+
 
 
         <script src="/static/main.js"></script>
